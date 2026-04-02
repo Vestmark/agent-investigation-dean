@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Price Monitor</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      background: #f6f8fa; color: #1f2328;
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      user-select: none;
+    }
+
+    /* ===== Top bar ===== */
+    .topbar {
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 16px; background: #1f2328; color: #e6edf3;
+      flex-shrink: 0; border-bottom: 1px solid #30363d;
+    }
+    .topbar h1 { font-size: 13px; font-weight: 700; color: #58a6ff; white-space: nowrap; }
+    .topbar-controls { display: flex; align-items: center; gap: 10px; margin-left: 12px; }
+    .topbar-controls input, .topbar-controls select, .topbar-controls button {
+      font-size: 10px; padding: 3px 8px; font-family: inherit;
+    }
+    .topbar-controls input {
+      background: #30363d; border: 1px solid #484f58; color: #e6edf3;
+      border-radius: 3px; width: 70px; outline: none;
+    }
+    .topbar-controls input:focus { border-color: #58a6ff; }
+    .topbar-controls select {
+      background: #30363d; border: 1px solid #484f58; color: #e6edf3;
+      border-radius: 3px; outline: none;
+    }
+    .topbar-controls button {
+      background: #238636; color: #fff; border: none; border-radius: 3px;
+      cursor: pointer; font-family: inherit;
+    }
+    .topbar-controls button:hover { background: #2ea043; }
+    .topbar-controls label { font-size: 9px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.3px; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #3fb950;
+      display: inline-block; animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .topbar-meta { font-size: 10px; color: #8b949e; }
+
+    /* ===== Panels container ===== */
+    .panels {
+      display: flex; flex-direction: column; flex: 1; min-height: 0;
+      overflow: hidden; gap: 0;
+    }
+
+    /* ===== Panel ===== */
+    .panel {
+      display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+      border-bottom: 1px solid #d1d9e0;
+    }
+    .panel.docked { flex: 0 0 auto !important; }
+    .panel.docked .panel-body { display: none; }
+    .panel-bar {
+      display: flex; align-items: center; gap: 8px; padding: 4px 12px;
+      background: #f6f8fa; border-bottom: 1px solid #eaeef2; flex-shrink: 0;
+    }
+    .panel.docked .panel-bar { border-bottom: none; }
+    .panel-bar h3 {
+      font-size: 10px; color: #656d76; text-transform: uppercase;
+      letter-spacing: 0.5px; font-weight: 600;
+    }
+    .panel-bar .spacer { flex: 1; }
+    .panel-bar .meta { font-size: 9px; color: #afb8c1; }
+    .pbtn {
+      background: none; border: 1px solid #d1d9e0; color: #656d76;
+      width: 18px; height: 18px; border-radius: 3px; font-size: 11px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; padding: 0; line-height: 1;
+    }
+    .pbtn:hover { background: #eaeef2; color: #1f2328; }
+    .panel-body { flex: 1; overflow: auto; min-height: 0; }
+
+    /* Resize handles */
+    .resize-handle {
+      flex-shrink: 0; height: 5px; cursor: row-resize;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .resize-handle::after {
+      content: ''; width: 40px; height: 3px;
+      border-top: 1px solid #d1d9e0; border-bottom: 1px solid #d1d9e0;
+    }
+    .resize-handle:hover::after { border-color: #0969da; }
+    .drag-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9999; cursor: row-resize;
+    }
+
+    /* ===== Shared styles ===== */
+    input[type="text"],input[type="number"],input[type="email"],select {
+      background: #fff; border: 1px solid #d1d9e0; color: #1f2328;
+      padding: 4px 8px; border-radius: 4px; font-family: inherit; font-size: 11px; outline: none;
+    }
+    input:focus,select:focus { border-color: #0969da; }
+    button {
+      background: #0969da; color: #fff; border: none; padding: 4px 10px;
+      border-radius: 4px; font-family: inherit; font-size: 11px; cursor: pointer; white-space: nowrap;
+    }
+    button:hover { opacity: 0.9; }
+    .btn-s { background: #eaeef2; color: #1f2328; font-size: 10px; padding: 2px 8px; }
+    .btn-s:hover { background: #d1d9e0; }
+    .btn-green { background: #1a7f37; }
+    .btn-red { background: #d1242f; }
+    .btn-ghost { background: none; color: #656d76; border: 1px solid #d1d9e0; }
+    .btn-ghost:hover { background: #f6f8fa; color: #1f2328; }
+    .hidden { display: none !important; }
+
+    /* ===== Table styles ===== */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .data-table thead th {
+      text-align: left; padding: 4px 8px; background: #f6f8fa; color: #656d76;
+      font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 2px solid #d1d9e0; white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    }
+    .data-table thead th.num { text-align: right; }
+    .data-table tbody td { padding: 3px 8px; border-bottom: 1px solid #eaeef2; white-space: nowrap; }
+    .data-table tbody td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .data-table tbody tr { transition: background 0.15s; cursor: default; }
+    .data-table tbody tr:hover { background: #f6f8fa; }
+    .data-table tbody tr.selected { background: #ddf4ff; }
+    .data-table tbody tr.below-open td { color: #d1242f; }
+
+    .day-positive { color: #1a7f37; font-weight: 600; }
+    .day-negative { color: #d1242f; font-weight: 600; }
+    .symbol-cell { color: #0969da; font-weight: 600; }
+    .na { color: #afb8c1; }
+    .spinner {
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid #d1d9e0; border-top-color: #0969da; border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin-right: 5px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .th-sort { cursor: pointer; user-select: none; }
+    .th-sort:hover { color: #0969da; }
+    .th-sort.sort-asc::after { content: ' \u25B2'; font-size: 8px; }
+    .th-sort.sort-desc::after { content: ' \u25BC'; font-size: 8px; }
+
+    .household-tag {
+      display: inline-block; padding: 1px 5px; border-radius: 3px;
+      font-size: 9px; font-weight: 600; white-space: nowrap;
+    }
+    .household-tag.evergreen { background: #dafbe1; color: #1a7f37; }
+    .household-tag.pinnacle { background: #ddf4ff; color: #0969da; }
+    .household-tag.horizon { background: #fff8c5; color: #9a6700; }
+
+    /* Holdings action bar */
+    .action-bar {
+      display: none; align-items: center; gap: 4px; padding: 4px 12px;
+      background: #ddf4ff; border-bottom: 1px solid #b6d9f7; flex-shrink: 0;
+    }
+    .action-bar.visible { display: flex; }
+    .action-bar .action-label { font-size: 10px; color: #0969da; font-weight: 600; margin-right: 4px; }
+    .action-bar button { font-size: 9px; padding: 2px 8px; }
+
+    /* Holdings filter row */
+    .holdings-filters {
+      display: flex; gap: 4px; align-items: center; flex-wrap: wrap; padding: 4px 12px;
+      background: #fff; border-bottom: 1px solid #eaeef2; flex-shrink: 0;
+    }
+    .holdings-filters input, .holdings-filters select {
+      font-size: 10px; padding: 2px 6px; width: auto;
+    }
+    .holdings-filters input { width: 70px; }
+
+    /* ===== News items ===== */
+    .news-split { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+    .news-col { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .news-col-divider { width: 1px; background: #d1d9e0; flex-shrink: 0; }
+    .news-col-header {
+      padding: 4px 10px; font-size: 9px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; flex-shrink: 0; border-bottom: 2px solid;
+    }
+    .news-col-header.positive { background: #f0fff4; color: #1a7f37; border-color: #1a7f37; }
+    .news-col-header.negative { background: #fff5f5; color: #d1242f; border-color: #d1242f; }
+    .news-col-body { flex: 1; overflow-y: auto; min-height: 0; }
+
+    .news-item {
+      padding: 5px 10px; border-bottom: 1px solid #eaeef2;
+      font-size: 10px; line-height: 1.3; transition: opacity 0.3s ease;
+    }
+    .news-item:hover { background: #f6f8fa; }
+    .news-item-row1 { display: flex; gap: 4px; align-items: center; }
+    .news-item-row2 { display: flex; gap: 4px; align-items: center; margin-top: 2px; }
+    .news-symbol {
+      background: #ddf4ff; color: #0969da; padding: 1px 3px; border-radius: 3px;
+      font-size: 8px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+    }
+    .news-impact {
+      padding: 1px 3px; border-radius: 3px; font-size: 7px; font-weight: 600;
+      white-space: nowrap; flex-shrink: 0; text-transform: uppercase;
+    }
+    .news-impact.positive { background: #dafbe1; color: #1a7f37; }
+    .news-impact.negative { background: #ffebe9; color: #d1242f; }
+    .news-impact.neutral { background: #eaeef2; color: #656d76; }
+    .news-title { flex: 1; color: #1f2328; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .news-title a { color: #1f2328; text-decoration: none; }
+    .news-title a:hover { color: #0969da; text-decoration: underline; }
+    .news-summary { flex: 1; color: #656d76; font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .news-source { color: #656d76; font-size: 8px; white-space: nowrap; flex-shrink: 0; }
+    .news-time { color: #afb8c1; font-size: 8px; white-space: nowrap; flex-shrink: 0; }
+    .news-crossref {
+      background: #fff8c5; color: #9a6700; padding: 1px 3px; border-radius: 3px;
+      font-size: 7px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+    }
+    .news-loading { text-align: center; padding: 12px; color: #656d76; font-size: 11px; }
+    .news-status-bar {
+      padding: 4px 10px; background: #ddf4ff; color: #0969da; font-size: 9px;
+      border-bottom: 1px solid #b6d9f7; display: flex; align-items: center; gap: 4px;
+      position: sticky; top: 0; z-index: 1;
+    }
+    .news-item-new { opacity: 0; transform: translateY(-4px); }
+
+    /* ===== Chat panel ===== */
+    .chat-tabs {
+      display: flex; gap: 0; background: #fff; flex-shrink: 0;
+      border-bottom: 2px solid #d1d9e0; padding: 0 12px;
+      overflow-x: auto;
+    }
+    .chat-tab {
+      padding: 4px 10px; font-size: 9px; color: #656d76; background: none;
+      border: none; border-bottom: 2px solid transparent; margin-bottom: -2px;
+      cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s;
+      border-radius: 0;
+    }
+    .chat-tab:hover { color: #1f2328; background: #f6f8fa; }
+    .chat-tab.active { color: #0969da; border-bottom-color: #0969da; font-weight: 600; }
+    .chat-container { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .chat-messages { flex: 1; overflow-y: auto; min-height: 0; padding: 8px 12px; }
+    .chat-welcome { color: #afb8c1; font-size: 10px; padding: 6px 0; text-align: center; }
+    .chat-msg {
+      margin-bottom: 6px; font-size: 11px; line-height: 1.4; max-width: 85%;
+      padding: 6px 10px; border-radius: 6px; word-wrap: break-word; white-space: pre-wrap;
+    }
+    .chat-msg.user { background: #0969da; color: #fff; margin-left: auto; border-bottom-right-radius: 2px; }
+    .chat-msg.assistant { background: #fff; color: #1f2328; border: 1px solid #eaeef2; border-bottom-left-radius: 2px; }
+    .chat-msg.loading { background: #f6f8fa; color: #656d76; border: 1px solid #eaeef2; font-style: italic; }
+    .chat-input-row {
+      display: flex; gap: 6px; padding: 6px 12px;
+      border-top: 1px solid #eaeef2; flex-shrink: 0; background: #fff;
+    }
+    .chat-input-row input {
+      flex: 1; padding: 6px 10px; font-size: 11px; border: 1px solid #d1d9e0;
+      border-radius: 4px; font-family: inherit; outline: none;
+    }
+    .chat-input-row input:focus { border-color: #0969da; }
+    .chat-input-row button { padding: 6px 12px; }
+
+    /* ===== Modal ===== */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .modal {
+      background: #fff; border-radius: 8px; box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      width: 650px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 10px 14px; background: #f6f8fa; border-bottom: 1px solid #d1d9e0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-header h3 { font-size: 12px; color: #1f2328; margin: 0; }
+    .modal-close {
+      background: none; border: none; font-size: 18px; color: #656d76;
+      cursor: pointer; padding: 0 4px; line-height: 1;
+    }
+    .modal-close:hover { color: #1f2328; }
+    .modal-body {
+      padding: 14px; overflow-y: auto; flex: 1; font-size: 11px; line-height: 1.5;
+    }
+    .modal-body pre {
+      background: #f6f8fa; border: 1px solid #d1d9e0; border-radius: 4px;
+      padding: 10px; white-space: pre-wrap; word-wrap: break-word; font-size: 11px;
+    }
+    .modal-footer {
+      padding: 8px 14px; border-top: 1px solid #d1d9e0; background: #f6f8fa;
+      display: flex; gap: 6px; justify-content: flex-end; align-items: center;
+    }
+
+    /* ===== Log drawer ===== */
+    .log-drawer { flex-shrink: 0; transition: height 0.2s ease; overflow: hidden; }
+    .log-drawer.collapsed { height: 24px; }
+    .log-drawer.expanded { height: 180px; }
+    .log-tab {
+      height: 24px; background: #1f2328; color: #8b949e; display: flex;
+      align-items: center; padding: 0 12px; gap: 8px; font-size: 9px;
+      cursor: pointer; border-top: 1px solid #30363d;
+    }
+    .log-tab:hover { color: #e6edf3; }
+    .log-content {
+      background: #161b22; color: #c9d1d9; height: calc(100% - 24px);
+      overflow: auto; padding: 6px 12px; font-size: 10px; white-space: pre; line-height: 1.3;
+    }
+    .log-content .line { display: block; }
+    .log-content .line.error { color: #f85149; }
+    .log-content .line.separator { color: #30363d; }
+    .log-content .line.header { color: #58a6ff; font-weight: 600; }
+    .log-content .line.change { color: #3fb950; }
+    .log-content .line.no-change { color: #8b949e; }
+    .log-content .line.below-open { color: #f85149; }
+
+    /* ===== News filter bar (inside news panel) ===== */
+    .news-toolbar {
+      display: flex; gap: 6px; align-items: center; padding: 3px 10px;
+      background: #fff; border-bottom: 1px solid #eaeef2; flex-shrink: 0;
+    }
+    .news-toolbar select { font-size: 10px; padding: 2px 6px; }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <h1>Stock Monitor</h1>
+    <div class="topbar-controls">
+      <label>Add</label>
+      <input type="text" id="new-symbol" placeholder="MSFT">
+      <button id="add-btn">+</button>
+      <label>Price</label>
+      <select id="interval-select">
+        <option value="5000">5s</option><option value="10000" selected>10s</option>
+        <option value="30000">30s</option><option value="60000">1m</option>
+        <option value="300000">5m</option>
+      </select>
+      <label>News</label>
+      <select id="news-interval-select">
+        <option value="10000">10s</option><option value="30000">30s</option>
+        <option value="60000" selected>1m</option><option value="300000">5m</option>
+        <option value="600000">10m</option>
+      </select>
+    </div>
+    <div class="topbar-right">
+      <span class="status-dot"></span>
+      <span class="topbar-meta" id="last-updated">Waiting for data...</span>
+    </div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panels" id="panels">
+
+    <!-- Prices -->
+    <div class="panel" id="p-prices" style="flex:1.5">
+      <div class="panel-bar">
+        <h3>Prices</h3>
+        <span class="meta" id="prices-status"></span>
+        <span class="spacer"></span>
+        <button class="pbtn" data-action="dock" title="Minimize">&#x2015;</button>
+        <button class="pbtn" data-action="restore" title="Restore">&#x25A1;</button>
+      </div>
+      <div class="panel-body">
+        <table class="data-table" id="price-table">
+          <thead><tr>
+            <th>Symbol</th><th class="num">Previous</th><th class="num">Current</th>
+            <th class="num">Change %</th><th class="num">Open</th><th class="num">Day %</th>
+          </tr></thead>
+          <tbody id="price-body">
+            <tr><td colspan="6" class="news-loading"><span class="spinner"></span> Waiting for prices...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="resize-handle" data-above="p-prices" data-below="p-holdings"></div>
+
+    <!-- Holdings -->
+    <div class="panel" id="p-holdings" style="flex:2">
+      <div class="panel-bar">
+        <h3>Holdings</h3>
+        <span class="spacer"></span>
+        <button class="pbtn" data-action="dock" title="Minimize">&#x2015;</button>
+        <button class="pbtn" data-action="restore" title="Restore">&#x25A1;</button>
+      </div>
+      <div class="action-bar" id="holdings-action-bar">
+        <span class="action-label" id="action-label">--</span>
+        <button class="btn-s" data-action="email">Email</button>
+        <button class="btn-s" data-action="analyze">Analysis</button>
+        <button class="btn-s" data-action="research">Research</button>
+        <button class="btn-s" data-action="sentiment">Sentiment</button>
+        <button class="btn-s" data-action="rebalance">Rebalance</button>
+        <button class="btn-s" data-action="report">Report</button>
+        <button class="btn-s" data-action="alert">Alert</button>
+        <span style="flex:1"></span>
+        <button class="btn-s btn-red" data-action="delete" style="color:#fff">Delete</button>
+      </div>
+      <div class="holdings-filters">
+        <select id="hf-household"><option value="">All Households</option></select>
+        <select id="hf-person"><option value="">All People</option></select>
+        <input type="text" id="hf-name" placeholder="Search...">
+        <input type="text" id="hf-positions" placeholder="Pos >100">
+        <input type="text" id="hf-pl" placeholder="P/L >0">
+        <button class="btn-s" id="hf-clear">Clear</button>
+      </div>
+      <div class="panel-body">
+        <table class="data-table" id="holdings-table">
+          <thead><tr>
+            <th><span class="th-sort" data-col="household">Household</span></th>
+            <th><span class="th-sort" data-col="person_name">Person</span></th>
+            <th><span class="th-sort" data-col="stock_name">Name</span></th>
+            <th><span class="th-sort" data-col="symbol">Symbol</span></th>
+            <th class="num"><span class="th-sort" data-col="positions">Positions</span></th>
+            <th class="num"><span class="th-sort" data-col="_strikeValue">Strike Val</span></th>
+            <th class="num"><span class="th-sort" data-col="_currentValue">Current Val</span></th>
+            <th class="num"><span class="th-sort" data-col="_pl">P/L</span></th>
+          </tr></thead>
+          <tbody id="holdings-body">
+            <tr><td colspan="8" class="news-loading"><span class="spinner"></span> Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="resize-handle" data-above="p-holdings" data-below="p-news"></div>
+
+    <!-- News -->
+    <div class="panel" id="p-news" style="flex:2">
+      <div class="panel-bar">
+        <h3>News</h3>
+        <span class="meta" id="news-status"></span>
+        <span class="spacer"></span>
+        <button class="btn-s" id="refresh-news-btn" style="font-size:9px;padding:1px 6px;">Refresh</button>
+        <button class="pbtn" data-action="dock" title="Minimize">&#x2015;</button>
+        <button class="pbtn" data-action="restore" title="Restore">&#x25A1;</button>
+      </div>
+      <div class="news-toolbar">
+        <select id="news-filter-symbol"><option value="">All Symbols</option></select>
+        <select id="news-filter-household"><option value="">All Households</option></select>
+        <span style="flex:1"></span>
+        <span id="news-updated" style="font-size:9px;color:#afb8c1"></span>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <div class="news-split">
+          <div class="news-col">
+            <div class="news-col-header positive">Positive / Neutral</div>
+            <div class="news-col-body" id="news-positive"></div>
+          </div>
+          <div class="news-col-divider"></div>
+          <div class="news-col">
+            <div class="news-col-header negative">Negative</div>
+            <div class="news-col-body" id="news-negative"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle" data-above="p-news" data-below="p-chat"></div>
+
+    <!-- Chat -->
+    <div class="panel" id="p-chat" style="flex:1.5">
+      <div class="panel-bar">
+        <h3>AI Chat</h3>
+        <span class="spacer"></span>
+        <button class="btn-s" id="ai-clear-btn" style="font-size:9px;padding:1px 6px;">Clear</button>
+        <button class="pbtn" data-action="dock" title="Minimize">&#x2015;</button>
+        <button class="pbtn" data-action="restore" title="Restore">&#x25A1;</button>
+      </div>
+      <div class="chat-tabs" id="agent-tabs">
+        <button class="chat-tab active" data-agent="chat">Chat</button>
+        <button class="chat-tab" data-agent="calendar">Calendar</button>
+        <button class="chat-tab" data-agent="alerts">Alerts</button>
+        <button class="chat-tab" data-agent="research">Research</button>
+        <button class="chat-tab" data-agent="rebalance">Rebalance</button>
+        <button class="chat-tab" data-agent="reporting">Reports</button>
+        <button class="chat-tab" data-agent="sentiment">Sentiment</button>
+      </div>
+      <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-welcome"><strong>Chat Agent</strong> — General questions, market data, portfolio</div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Type a message...">
+          <button id="chat-send">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Drawer -->
+  <div class="log-drawer collapsed" id="log-drawer">
+    <div class="log-tab" id="log-tab">
+      <span>&#x25B6;</span> Activity Log
+      <span style="flex:1"></span>
+      <span id="log-count" style="font-size:8px;color:#656d76">0 lines</span>
+      <button class="btn-s" id="clear-btn" style="background:#30363d;color:#8b949e;border:none;" onclick="event.stopPropagation()">Clear</button>
+    </div>
+    <div class="log-content" id="log"></div>
+  </div>
+
+  <script>
+    // ===== Log Drawer =====
+    const logDrawer = document.getElementById('log-drawer');
+    const logEl = document.getElementById('log');
+    let logLines = 0;
+    document.getElementById('log-tab').onclick = () => {
+      logDrawer.classList.toggle('collapsed');
+      logDrawer.classList.toggle('expanded');
+      const arrow = logDrawer.querySelector('.log-tab span:first-child');
+      arrow.textContent = logDrawer.classList.contains('expanded') ? '\u25BC' : '\u25B6';
+    };
+    document.getElementById('clear-btn').onclick = () => { logEl.innerHTML = ''; logLines = 0; document.getElementById('log-count').textContent = '0 lines'; };
+
+    function appendLog(text) {
+      const ln = document.createElement('span'); ln.className = 'line';
+      let dt = text;
+      if (text.startsWith('[BELOW_OPEN]')) { ln.classList.add('below-open'); dt = text.replace('[BELOW_OPEN] ', ''); }
+      else if (text.startsWith('[ERROR]')) ln.classList.add('error');
+      else if (text.startsWith('=') || text.includes('\u2500')) ln.classList.add('separator');
+      else if (text.includes('\u2554') || text.includes('\u255a') || text.includes('\u2560') || text.includes('\u2551')) ln.classList.add('header');
+      else if (text.includes('*')) ln.classList.add('change');
+      else if (text.includes('No significant')) ln.classList.add('no-change');
+      ln.textContent = dt + '\n';
+      logEl.appendChild(ln);
+      while (logEl.childElementCount > 500) logEl.removeChild(logEl.firstChild);
+      logEl.scrollTop = logEl.scrollHeight;
+      logLines = Math.min(logLines + 1, 500);
+      document.getElementById('log-count').textContent = logLines + ' lines';
+    }
+
+    // ===== DOM refs =====
+    const priceBody = document.getElementById('price-body');
+    const newsPositive = document.getElementById('news-positive');
+    const newsNegative = document.getElementById('news-negative');
+    const newsUpdatedEl = document.getElementById('news-updated');
+    const pricesStatusEl = document.getElementById('prices-status');
+    const lastUpdatedEl = document.getElementById('last-updated');
+    const holdingsBody = document.getElementById('holdings-body');
+
+    // ===== Shared state =====
+    const currentPriceMap = {};
+    let allHoldings = [];
+    let allNewsArticles = [];
+    let symbolHouseholdMap = {};
+
+    // ===== SSE =====
+    function connectSSE() {
+      const src = new EventSource('/api/logs');
+      src.addEventListener('log', (e) => { appendLog(JSON.parse(e.data).text); });
+      src.addEventListener('prices', (e) => {
+        const { rows, lastUpdated } = JSON.parse(e.data);
+        for (const r of rows) { if (r.current) currentPriceMap[r.symbol] = r.current; }
+        renderPriceTable(rows);
+        lastUpdatedEl.textContent = `Prices: ${lastUpdated}`;
+        pricesStatusEl.textContent = lastUpdated;
+        if (allHoldings.length) refreshHoldingsView();
+      });
+      src.addEventListener('news', (e) => {
+        const { articles, lastUpdated } = JSON.parse(e.data);
+        renderNews(articles);
+        newsUpdatedEl.textContent = lastUpdated;
+      });
+      src.addEventListener('news-clear', () => {
+        allNewsArticles = [];
+        newsPositive.innerHTML = '';
+        newsNegative.innerHTML = '';
+        newsUpdatedEl.textContent = '';
+      });
+      src.addEventListener('news-status', (e) => {
+        const { message } = JSON.parse(e.data);
+        let statusEl = newsPositive.querySelector('.news-status-bar');
+        if (!statusEl) { statusEl = document.createElement('div'); statusEl.className = 'news-status-bar'; newsPositive.prepend(statusEl); }
+        if (message.startsWith('Done')) {
+          statusEl.innerHTML = '&#x2713; ' + message;
+          setTimeout(() => statusEl.remove(), 3000);
+        } else {
+          statusEl.innerHTML = '<span class="spinner"></span> ' + message;
+        }
+        document.getElementById('news-status').textContent = message;
+      });
+      src.addEventListener('news-append', (e) => {
+        const { articles, lastUpdated } = JSON.parse(e.data);
+        appendNews(articles);
+        newsUpdatedEl.textContent = lastUpdated;
+      });
+      src.onerror = () => { src.close(); setTimeout(connectSSE, 3000); };
+    }
+
+    // ===== Price Table =====
+    function fmtPrice(n) { return (n === null || n === undefined) ? '--' : '$' + n.toFixed(2); }
+    function fmtPct(p) { return (p === null || p === undefined) ? '--' : (p >= 0 ? '+' : '') + p.toFixed(2) + '%'; }
+    function fmtVal(n) { return n ? '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '--'; }
+
+    let lastPriceRows = [];
+    function renderPriceTable(rows) {
+      lastPriceRows = rows;
+      priceBody.innerHTML = '';
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        if (r.belowOpen) tr.classList.add('below-open');
+        const dc = r.dayPct >= 0 ? 'day-positive' : 'day-negative';
+        const cc = r.changePct !== null ? (r.changePct >= 0 ? 'day-positive' : 'day-negative') : '';
+        tr.innerHTML = `
+          <td class="symbol-cell">${r.symbol}</td>
+          <td class="num">${r.previous !== null ? fmtPrice(r.previous) : '<span class="na">--</span>'}</td>
+          <td class="num">${fmtPrice(r.current)}</td>
+          <td class="num ${cc}">${fmtPct(r.changePct)}</td>
+          <td class="num">${fmtPrice(r.open)}</td>
+          <td class="num ${dc}">${fmtPct(r.dayPct)}</td>`;
+        priceBody.appendChild(tr);
+      }
+    }
+
+    // ===== News =====
+    const newsFilterSymbol = document.getElementById('news-filter-symbol');
+    const newsFilterHousehold = document.getElementById('news-filter-household');
+
+    function buildSymbolHouseholdMap() {
+      symbolHouseholdMap = {};
+      for (const h of allHoldings) {
+        if (!h.symbol || !h.household) continue;
+        if (!symbolHouseholdMap[h.symbol]) symbolHouseholdMap[h.symbol] = new Set();
+        symbolHouseholdMap[h.symbol].add(h.household);
+      }
+    }
+
+    function timeAgo(d) {
+      if (!d) return '';
+      const s = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+      if (s < 60) return 'now'; if (s < 3600) return Math.floor(s / 60) + 'm'; if (s < 86400) return Math.floor(s / 3600) + 'h'; return Math.floor(s / 86400) + 'd';
+    }
+
+    function createNewsItem(item, animate) {
+      const d = document.createElement('div');
+      d.className = 'news-item' + (animate ? ' news-item-new' : '');
+      const xr = (item.crossRef && item.crossRef.length) ? item.crossRef.map(s => `<span class="news-crossref">${s}</span>`).join(' ') : '';
+      d.innerHTML = `
+        <div class="news-item-row1">
+          <span class="news-symbol">${item.symbol}</span>
+          <span class="news-impact ${item.impact}">${item.impact}</span>
+          <span class="news-title"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></span>
+          <span class="news-time">${timeAgo(item.pubDate)}</span>
+        </div>
+        <div class="news-item-row2">
+          <span class="news-summary">${item.summary || ''}</span>
+          ${xr}
+          <span class="news-source">${item.source}</span>
+        </div>`;
+      return d;
+    }
+
+    function getTargetFeed(item) { return item.impact === 'negative' ? newsNegative : newsPositive; }
+
+    function filterNewsArticle(item) {
+      const symFilter = newsFilterSymbol.value;
+      const hhFilter = newsFilterHousehold.value;
+      if (symFilter && item.symbol !== symFilter) return false;
+      if (hhFilter) { const hhs = symbolHouseholdMap[item.symbol]; if (!hhs || !hhs.has(hhFilter)) return false; }
+      return true;
+    }
+
+    function refreshNewsView() {
+      newsPositive.innerHTML = '';
+      newsNegative.innerHTML = '';
+      const filtered = allNewsArticles.filter(filterNewsArticle);
+      if (!filtered.length) { newsPositive.innerHTML = '<div class="news-loading">No matching news.</div>'; return; }
+      for (const item of filtered) getTargetFeed(item).appendChild(createNewsItem(item, false));
+    }
+
+    function renderNews(articles) {
+      allNewsArticles = articles || [];
+      updateNewsFilterOptions();
+      refreshNewsView();
+    }
+
+    function appendNews(articles) {
+      if (!articles || !articles.length) return;
+      allNewsArticles.push(...articles);
+      updateNewsFilterOptions();
+      for (const item of articles) {
+        if (!filterNewsArticle(item)) continue;
+        const d = createNewsItem(item, true);
+        getTargetFeed(item).appendChild(d);
+        requestAnimationFrame(() => d.classList.remove('news-item-new'));
+      }
+    }
+
+    function updateNewsFilterOptions() {
+      const syms = [...new Set(allNewsArticles.map(a => a.symbol))].sort();
+      const prevSym = newsFilterSymbol.value;
+      newsFilterSymbol.innerHTML = '<option value="">All Symbols</option>';
+      for (const s of syms) { const o = document.createElement('option'); o.value = s; o.textContent = s; newsFilterSymbol.appendChild(o); }
+      if (prevSym && syms.includes(prevSym)) newsFilterSymbol.value = prevSym;
+
+      buildSymbolHouseholdMap();
+      const hhs = [...new Set(allHoldings.map(h => h.household).filter(Boolean))].sort();
+      const prevHH = newsFilterHousehold.value;
+      newsFilterHousehold.innerHTML = '<option value="">All Households</option>';
+      for (const h of hhs) { const o = document.createElement('option'); o.value = h; o.textContent = h; newsFilterHousehold.appendChild(o); }
+      if (prevHH && hhs.includes(prevHH)) newsFilterHousehold.value = prevHH;
+    }
+
+    newsFilterSymbol.onchange = refreshNewsView;
+    newsFilterHousehold.onchange = refreshNewsView;
+    document.getElementById('refresh-news-btn').onclick = async () => {
+      newsPositive.innerHTML = '<div class="news-loading"><span class="spinner"></span> Fetching news...</div>';
+      newsNegative.innerHTML = '';
+      await fetch('/api/news-refresh', { method: 'POST' });
+    };
+
+    // ===== Panel Dock/Restore =====
+    document.getElementById('panels').addEventListener('click', (e) => {
+      const btn = e.target.closest('.pbtn');
+      if (!btn) return;
+      const panel = btn.closest('.panel');
+      const action = btn.dataset.action;
+      if (action === 'dock') {
+        if (!panel.dataset.prevFlex) panel.dataset.prevFlex = panel.style.flex;
+        panel.classList.add('docked');
+      } else if (action === 'restore') {
+        panel.classList.remove('docked');
+        if (panel.dataset.prevFlex) panel.style.flex = panel.dataset.prevFlex;
+      }
+    });
+
+    // ===== Resize Handles =====
+    document.querySelectorAll('.resize-handle').forEach(handle => {
+      handle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const abovePanel = document.getElementById(handle.dataset.above);
+        const belowPanel = document.getElementById(handle.dataset.below);
+        if (!abovePanel || !belowPanel) return;
+        if (abovePanel.classList.contains('docked') || belowPanel.classList.contains('docked')) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'drag-overlay';
+        document.body.appendChild(overlay);
+        const startY = e.clientY;
+        const startAboveH = abovePanel.getBoundingClientRect().height;
+        const startBelowH = belowPanel.getBoundingClientRect().height;
+        function onMove(ev) {
+          const dy = ev.clientY - startY;
+          abovePanel.style.flex = `0 0 ${Math.max(30, startAboveH + dy)}px`;
+          belowPanel.style.flex = `0 0 ${Math.max(30, startBelowH - dy)}px`;
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          overlay.remove();
+          const aH = abovePanel.getBoundingClientRect().height;
+          const bH = belowPanel.getBoundingClientRect().height;
+          const total = aH + bH;
+          abovePanel.style.flex = String(aH / total * 4);
+          belowPanel.style.flex = String(bH / total * 4);
+          abovePanel.dataset.prevFlex = abovePanel.style.flex;
+          belowPanel.dataset.prevFlex = belowPanel.style.flex;
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    });
+
+    // ===== Holdings =====
+    let holdingsSortCol = 'household';
+    let holdingsSortDir = 'asc';
+    let selectedHolding = null;
+
+    const hfName = document.getElementById('hf-name');
+    const hfPerson = document.getElementById('hf-person');
+    const hfHousehold = document.getElementById('hf-household');
+    const hfPositions = document.getElementById('hf-positions');
+    const hfPL = document.getElementById('hf-pl');
+
+    function householdClass(h) {
+      const lc = (h || '').toLowerCase();
+      if (lc === 'evergreen') return 'evergreen';
+      if (lc === 'pinnacle') return 'pinnacle';
+      if (lc === 'horizon') return 'horizon';
+      return '';
+    }
+
+    function parseNumFilter(expr) {
+      const s = expr.trim(); if (!s) return null;
+      let m;
+      if ((m = s.match(/^>=?\s*([\d.]+)$/))) return { op: '>=', val: parseFloat(m[1]) };
+      if ((m = s.match(/^>\s*([\d.]+)$/))) return { op: '>', val: parseFloat(m[1]) };
+      if ((m = s.match(/^<=?\s*([\d.]+)$/))) return { op: '<=', val: parseFloat(m[1]) };
+      if ((m = s.match(/^<\s*([\d.]+)$/))) return { op: '<', val: parseFloat(m[1]) };
+      if ((m = s.match(/^=\s*([\d.]+)$/))) return { op: '=', val: parseFloat(m[1]) };
+      if ((m = s.match(/^([\d.]+)\s*-\s*([\d.]+)$/))) return { op: 'range', lo: parseFloat(m[1]), hi: parseFloat(m[2]) };
+      if ((m = s.match(/^([\d.]+)$/))) return { op: '=', val: parseFloat(m[1]) };
+      return null;
+    }
+
+    function matchNumFilter(val, filter) {
+      if (!filter) return true;
+      switch (filter.op) {
+        case '>': return val > filter.val;
+        case '>=': return val >= filter.val;
+        case '<': return val < filter.val;
+        case '<=': return val <= filter.val;
+        case '=': return val === filter.val;
+        case 'range': return val >= filter.lo && val <= filter.hi;
+      }
+      return true;
+    }
+
+    function getFilteredSortedHoldings() {
+      let enriched = allHoldings.map(h => {
+        const cp = currentPriceMap[h.symbol] || 0;
+        const cv = h.positions * cp;
+        const sv = h.positions * h.strike_price;
+        return { ...h, _curPrice: cp, _currentValue: cv, _strikeValue: sv, _pl: cv - sv };
+      });
+
+      const nameF = hfName.value.trim().toLowerCase();
+      const personF = hfPerson.value;
+      const householdF = hfHousehold.value;
+      const posF = parseNumFilter(hfPositions.value);
+      const plF = parseNumFilter(hfPL.value);
+
+      enriched = enriched.filter(h => {
+        if (nameF && !h.stock_name.toLowerCase().includes(nameF) && !h.symbol.toLowerCase().includes(nameF)) return false;
+        if (personF && h.person_name !== personF) return false;
+        if (householdF && h.household !== householdF) return false;
+        if (posF && !matchNumFilter(h.positions, posF)) return false;
+        if (plF && !matchNumFilter(h._pl, plF)) return false;
+        return true;
+      });
+
+      const col = holdingsSortCol;
+      const dir = holdingsSortDir === 'asc' ? 1 : -1;
+      enriched.sort((a, b) => {
+        let av = a[col], bv = b[col];
+        if (typeof av === 'string') { av = av.toLowerCase(); bv = (bv || '').toLowerCase(); }
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return 0;
+      });
+
+      return enriched;
+    }
+
+    function renderHoldings(holdings) {
+      holdingsBody.innerHTML = '';
+      if (!holdings.length) {
+        holdingsBody.innerHTML = '<tr><td colspan="8" class="news-loading">No matching holdings.</td></tr>';
+        return;
+      }
+      for (const h of holdings) {
+        const tr = document.createElement('tr');
+        const hc = householdClass(h.household);
+        const hasPrices = h._curPrice > 0 && h.positions > 0;
+        const plClass = hasPrices ? (h._pl >= 0 ? 'day-positive' : 'day-negative') : '';
+        const curValClass = hasPrices ? (h._curPrice >= h.strike_price ? 'day-positive' : 'day-negative') : '';
+        const plStr = hasPrices ? ((h._pl >= 0 ? '+' : '') + fmtVal(h._pl)) : '<span class="na">--</span>';
+        tr.dataset.id = h.id;
+        tr.dataset.symbol = h.symbol;
+        tr.dataset.person = h.person_name;
+        tr.dataset.household = h.household;
+        tr.innerHTML = `
+          <td>${h.household ? '<span class="household-tag ' + hc + '">' + h.household + '</span>' : '<span class="na">--</span>'}</td>
+          <td>${h.person_name || '<span class="na">--</span>'}</td>
+          <td>${h.stock_name}</td>
+          <td class="symbol-cell">${h.symbol}</td>
+          <td class="num">${h.positions ? h.positions.toLocaleString() : '<span class="na">--</span>'}</td>
+          <td class="num">${h.positions && h.strike_price ? fmtVal(h._strikeValue) : '<span class="na">--</span>'}</td>
+          <td class="num ${curValClass}">${hasPrices ? fmtVal(h._currentValue) : '<span class="na">--</span>'}</td>
+          <td class="num ${plClass}">${plStr}</td>`;
+        tr.addEventListener('click', () => selectHoldingRow(tr));
+        holdingsBody.appendChild(tr);
+      }
+    }
+
+    function selectHoldingRow(tr) {
+      holdingsBody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+      if (!tr.dataset.person) return;
+      tr.classList.add('selected');
+      selectedHolding = {
+        id: tr.dataset.id, symbol: tr.dataset.symbol,
+        person: tr.dataset.person, household: tr.dataset.household
+      };
+      const bar = document.getElementById('holdings-action-bar');
+      bar.classList.add('visible');
+      document.getElementById('action-label').textContent = `${selectedHolding.symbol} — ${selectedHolding.person}`;
+    }
+
+    // Action bar click
+    document.getElementById('holdings-action-bar').addEventListener('click', async (e) => {
+      const btn = e.target.closest('button');
+      if (!btn || !selectedHolding) return;
+      const action = btn.dataset.action;
+      const { id, symbol, person, household } = selectedHolding;
+
+      if (action === 'delete') {
+        if (confirm('Delete this holding?')) {
+          await fetch('/api/holdings/' + id, { method: 'DELETE' });
+          fetchHoldings();
+        }
+      } else if (action === 'email') {
+        openEmailAdvisement(symbol, person, household);
+      } else if (action === 'analyze') {
+        openTradingAnalysis(symbol, person, household);
+      } else if (action === 'research') {
+        openAgentModal('research', `Research ${symbol}`, `Provide a comprehensive research report on ${symbol}. Check current portfolio positions for "${person}" in the "${household}" household.`);
+      } else if (action === 'sentiment') {
+        openAgentModal('sentiment', `Sentiment: ${symbol}`, `Analyze social media sentiment for ${symbol}. Also check our portfolio position for "${person}" in "${household}" household.`);
+      } else if (action === 'rebalance') {
+        openAgentModal('rebalance', `Rebalance: ${household}`, `Analyze portfolio rebalancing for the "${household}" household. Focus on the ${symbol} position held by "${person}".`);
+      } else if (action === 'report') {
+        openAgentModal('reporting', `Report: ${household}`, `Generate a performance report for the "${household}" household. Include all positions, P/L, and notable observations.`);
+      } else if (action === 'alert') {
+        openAlertSetup(symbol, person, household);
+      }
+    });
+
+    function refreshHoldingsView() {
+      const result = getFilteredSortedHoldings();
+      renderHoldings(result);
+      document.querySelectorAll('#holdings-table .th-sort').forEach(el => {
+        el.classList.remove('sort-asc', 'sort-desc');
+        if (el.dataset.col === holdingsSortCol) el.classList.add(holdingsSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      });
+    }
+
+    document.querySelectorAll('#holdings-table .th-sort[data-col]').forEach(el => {
+      el.addEventListener('click', () => {
+        if (holdingsSortCol === el.dataset.col) holdingsSortDir = holdingsSortDir === 'asc' ? 'desc' : 'asc';
+        else { holdingsSortCol = el.dataset.col; holdingsSortDir = 'asc'; }
+        refreshHoldingsView();
+      });
+    });
+
+    [hfName, hfPositions, hfPL].forEach(el => el.addEventListener('input', refreshHoldingsView));
+    [hfPerson, hfHousehold].forEach(el => el.addEventListener('change', refreshHoldingsView));
+    document.getElementById('hf-clear').addEventListener('click', () => {
+      hfName.value = ''; hfPerson.value = ''; hfHousehold.value = '';
+      hfPositions.value = ''; hfPL.value = '';
+      refreshHoldingsView();
+    });
+
+    async function fetchHoldings() {
+      const res = await fetch('/api/holdings');
+      const { holdings, households, people } = await res.json();
+      allHoldings = holdings;
+
+      const prevPerson = hfPerson.value;
+      const prevHH = hfHousehold.value;
+      hfPerson.innerHTML = '<option value="">All People</option>';
+      hfHousehold.innerHTML = '<option value="">All Households</option>';
+      for (const p of people) { const o = document.createElement('option'); o.value = p; o.textContent = p; hfPerson.appendChild(o); }
+      for (const h of households) { const o = document.createElement('option'); o.value = h; o.textContent = h; hfHousehold.appendChild(o); }
+      if (prevPerson) hfPerson.value = prevPerson;
+      if (prevHH) hfHousehold.value = prevHH;
+
+      refreshHoldingsView();
+    }
+    fetchHoldings();
+
+    // ===== Modal System =====
+    function showModal(title, bodyHtml, footerHtml) {
+      document.querySelector('.modal-overlay')?.remove();
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <div class="modal-header"><h3>${title}</h3><button class="modal-close">&times;</button></div>
+          <div class="modal-body">${bodyHtml}</div>
+          ${footerHtml ? '<div class="modal-footer">' + footerHtml + '</div>' : ''}
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('.modal-close').onclick = () => overlay.remove();
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+      return overlay;
+    }
+
+    function getHoldingContext(sym, person, household) {
+      const price = currentPriceMap[sym] || 0;
+      const holding = allHoldings.find(h => h.symbol === sym && h.person_name === person);
+      const positions = holding ? holding.positions : 0;
+      const strike = holding ? holding.strike_price : 0;
+      const currentVal = positions * price;
+      const strikeVal = positions * strike;
+      const pl = currentVal - strikeVal;
+      const stockName = holding ? holding.stock_name : sym;
+      return { sym, person, household, stockName, price, positions, strike, currentVal, strikeVal, pl };
+    }
+
+    // ===== Agent Modals =====
+    async function openAgentModal(agentName, title, prompt) {
+      const overlay = showModal(title, '<span class="spinner"></span> Agent is working...', '');
+      try {
+        const res = await fetch(`/api/agent/${agentName}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
+        });
+        const { result, error } = await res.json();
+        if (error) throw new Error(error);
+        overlay.querySelector('.modal-body').innerHTML = '<pre>' + result.replace(/</g, '&lt;') + '</pre>';
+        overlay.querySelector('.modal').insertAdjacentHTML('beforeend',
+          '<div class="modal-footer"><button onclick="navigator.clipboard.writeText(this.closest(\'.modal\').querySelector(\'pre\').textContent);this.textContent=\'Copied!\'">Copy</button></div>');
+      } catch (e) {
+        overlay.querySelector('.modal-body').innerHTML = '<div style="color:#d1242f">Error: ' + e.message + '</div>';
+      }
+    }
+
+    async function openEmailAdvisement(sym, person, household) {
+      const ctx = getHoldingContext(sym, person, household);
+      const overlay = showModal(`Email Advisement — ${ctx.stockName} (${sym})`, '<span class="spinner"></span> Drafting email...', '');
+
+      const prompt = `Draft an email advisement for client "${person}" in the "${household}" household regarding their position in ${ctx.stockName} (${sym}).
+Use the query-portfolio and query-prices tools to get the latest data for ${sym}.
+Additional context: Shares: ${ctx.positions}, Strike: $${ctx.strike.toFixed(2)}, Current: $${ctx.price.toFixed(2)}, P/L: ${ctx.pl >= 0 ? '+' : ''}$${ctx.pl.toFixed(2)}
+Draft only — do NOT send the email yet.`;
+
+      try {
+        const res = await fetch('/api/email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt }) });
+        const { result, error } = await res.json();
+        if (error) throw new Error(error);
+        const emailText = result;
+        overlay.querySelector('.modal-body').innerHTML = '<pre>' + emailText.replace(/</g, '&lt;') + '</pre>';
+        const footer = document.createElement('div');
+        footer.className = 'modal-footer';
+        footer.innerHTML = `<input type="email" id="modal-send-to" placeholder="Recipient email" style="flex:1;padding:4px 8px;font-size:11px;border:1px solid #d1d9e0;border-radius:4px;font-family:inherit;">
+          <button id="modal-send-btn">Send</button><button id="modal-copy-btn" class="btn-ghost">Copy</button>`;
+        overlay.querySelector('.modal-footer')?.remove();
+        overlay.querySelector('.modal').appendChild(footer);
+        footer.querySelector('#modal-copy-btn').onclick = () => { navigator.clipboard.writeText(overlay.querySelector('pre').textContent); footer.querySelector('#modal-copy-btn').textContent = 'Copied!'; };
+        footer.querySelector('#modal-send-btn').onclick = async () => {
+          const toAddr = footer.querySelector('#modal-send-to').value.trim();
+          if (!toAddr) { alert('Enter a recipient.'); return; }
+          const sendBtn = footer.querySelector('#modal-send-btn');
+          sendBtn.disabled = true; sendBtn.textContent = 'Sending...';
+          const subjectMatch = emailText.match(/Subject:\s*(.+)/i);
+          const subject = subjectMatch ? subjectMatch[1].trim() : `Advisement: ${sym}`;
+          try {
+            const sRes = await fetch('/api/email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: `Send this email using the send-email tool.\nTo: ${toAddr}\nSubject: ${subject}\n\n${emailText}` }) });
+            const sData = await sRes.json();
+            if (sData.error) throw new Error(sData.error);
+            sendBtn.textContent = 'Sent!'; sendBtn.style.background = '#1a7f37';
+          } catch (err) { sendBtn.textContent = 'Failed'; sendBtn.style.background = '#d1242f'; }
+        };
+      } catch (e) { overlay.querySelector('.modal-body').innerHTML = '<div style="color:#d1242f">Error: ' + e.message + '</div>'; }
+    }
+
+    async function openTradingAnalysis(sym, person, household) {
+      const ctx = getHoldingContext(sym, person, household);
+      const relatedNews = allNewsArticles.filter(a => a.symbol === sym).map(a => `[${a.impact}] ${a.title}`).slice(0, 5).join('\n');
+      const prompt = `Analyze trading options for "${person}" (${household}) on ${ctx.stockName} (${sym}).
+Position: ${ctx.positions} shares, Strike: $${ctx.strike.toFixed(2)}, Current: $${ctx.price.toFixed(2)}, P/L: ${ctx.pl >= 0 ? '+' : ''}$${ctx.pl.toFixed(2)}
+${relatedNews ? 'Recent news:\n' + relatedNews : ''}
+Provide: Position Assessment, Trading Options, Hedging Strategies, Risk Factors, Recommended Action.`;
+      openAgentModal('advisor', `Trading Analysis — ${sym}`, prompt);
+    }
+
+    function openAlertSetup(sym, person, household) {
+      const price = currentPriceMap[sym] || 0;
+      const overlay = showModal(`Set Alert — ${sym}`,
+        `<div style="display:flex;flex-direction:column;gap:10px;">
+          <div><strong>${sym}</strong> — Current: $${price.toFixed(2)}</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label style="font-size:11px;width:80px;">Type:</label>
+            <select id="alert-type" style="flex:1;font-size:11px;padding:4px;border:1px solid #d1d9e0;border-radius:3px;">
+              <option value="price_above">Price Above</option><option value="price_below">Price Below</option>
+              <option value="daily_change_above">Daily % Above</option><option value="daily_change_below">Daily % Below</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <label style="font-size:11px;width:80px;">Threshold:</label>
+            <input type="number" id="alert-threshold" step="0.01" value="${price.toFixed(2)}" style="flex:1;font-size:11px;padding:4px;border:1px solid #d1d9e0;border-radius:3px;">
+          </div>
+        </div>`,
+        '<button id="alert-create-btn" class="btn-green">Create Alert</button>');
+
+      overlay.querySelector('#alert-create-btn').onclick = async () => {
+        const alertType = overlay.querySelector('#alert-type').value;
+        const threshold = parseFloat(overlay.querySelector('#alert-threshold').value);
+        if (isNaN(threshold)) { alert('Enter a valid threshold.'); return; }
+        const btn = overlay.querySelector('#alert-create-btn');
+        btn.disabled = true; btn.textContent = 'Creating...';
+        try {
+          const res = await fetch('/api/agent/alerts', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: `Create an alert for ${sym}: type=${alertType}, threshold=${threshold}, person="${person}", household="${household}"` }) });
+          const { result, error } = await res.json();
+          if (error) throw new Error(error);
+          overlay.querySelector('.modal-body').innerHTML = '<pre>' + result.replace(/</g, '&lt;') + '</pre>';
+          btn.textContent = 'Done'; btn.style.background = '#1a7f37';
+        } catch (e) { btn.textContent = 'Error'; btn.style.background = '#d1242f'; }
+      };
+    }
+
+    // ===== AI Chat =====
+    const agentDescs = {
+      chat: 'General questions, market data, portfolio',
+      calendar: 'Reminders, appointments, schedule',
+      alerts: 'Create and manage price alerts',
+      research: 'Company research, SEC filings',
+      rebalance: 'Portfolio rebalancing analysis',
+      reporting: 'Generate portfolio reports',
+      sentiment: 'Social media sentiment analysis',
+    };
+    let activeAgent = 'chat';
+    const chatHistory = {};
+    const chatMessages = document.getElementById('chat-messages');
+    const chatInput = document.getElementById('chat-input');
+    const chatSendBtn = document.getElementById('chat-send');
+    let chatBusy = false;
+    const agentLabels = {
+      chat: 'Chat', calendar: 'Calendar', alerts: 'Alerts',
+      research: 'Research', rebalance: 'Rebalance', reporting: 'Reports', sentiment: 'Sentiment'
+    };
+
+    document.querySelectorAll('.chat-tab[data-agent]').forEach(tab => {
+      tab.addEventListener('click', () => {
+        if (tab.dataset.agent === activeAgent) return;
+        document.querySelectorAll('.chat-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeAgent = tab.dataset.agent;
+        renderChatHistory();
+        chatInput.focus();
+      });
+    });
+
+    document.getElementById('ai-clear-btn').onclick = () => {
+      chatHistory[activeAgent] = [];
+      renderChatHistory();
+    };
+
+    function renderChatHistory() {
+      chatMessages.innerHTML = '';
+      const hist = chatHistory[activeAgent] || [];
+      if (!hist.length) {
+        chatMessages.innerHTML = `<div class="chat-welcome"><strong>${agentLabels[activeAgent] || activeAgent} Agent</strong> — ${agentDescs[activeAgent] || ''}</div>`;
+        return;
+      }
+      for (const msg of hist) appendChatBubble(msg.role, msg.content, false);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function appendChatBubble(role, content, scroll) {
+      const div = document.createElement('div');
+      div.className = 'chat-msg ' + role;
+      if (role === 'assistant') {
+        let safe = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        safe = safe.replace(/`([^`]+)`/g, '<code>$1</code>');
+        div.innerHTML = safe;
+      } else { div.textContent = content; }
+      chatMessages.querySelector('.chat-welcome')?.remove();
+      chatMessages.querySelector('.chat-msg.loading')?.remove();
+      chatMessages.appendChild(div);
+      if (scroll !== false) chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendChatMessage() {
+      const text = chatInput.value.trim();
+      if (!text || chatBusy) return;
+      chatBusy = true; chatInput.value = ''; chatSendBtn.disabled = true;
+
+      if (!chatHistory[activeAgent]) chatHistory[activeAgent] = [];
+      chatHistory[activeAgent].push({ role: 'user', content: text });
+      appendChatBubble('user', text);
+
+      const loadDiv = document.createElement('div');
+      loadDiv.className = 'chat-msg loading';
+      loadDiv.innerHTML = '<span class="spinner"></span> Thinking...';
+      chatMessages.appendChild(loadDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      try {
+        const conversational = ['calendar', 'chat'];
+        let res;
+        if (conversational.includes(activeAgent)) {
+          res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agent: activeAgent, message: text, history: chatHistory[activeAgent].slice(0, -1) }) });
+        } else {
+          res = await fetch(`/api/agent/${activeAgent}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text }) });
+        }
+        const { result, error } = await res.json();
+        if (error) throw new Error(error);
+        chatHistory[activeAgent].push({ role: 'assistant', content: result });
+        appendChatBubble('assistant', result);
+      } catch (e) {
+        const errMsg = 'Error: ' + e.message;
+        chatHistory[activeAgent].push({ role: 'assistant', content: errMsg });
+        appendChatBubble('assistant', errMsg);
+      }
+      chatBusy = false; chatSendBtn.disabled = false; chatInput.focus();
+    }
+
+    chatSendBtn.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
+
+    // ===== Settings Controls =====
+    const newSymIn = document.getElementById('new-symbol');
+    async function addSymbol() {
+      const sym = newSymIn.value.trim(); if (!sym) return;
+      await fetch('/api/symbols', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: sym }) });
+      newSymIn.value = ''; appendLog(`Added ${sym.toUpperCase()}.`);
+    }
+    document.getElementById('add-btn').onclick = addSymbol;
+    newSymIn.addEventListener('keydown', e => { if (e.key === 'Enter') addSymbol(); });
+
+    const intSel = document.getElementById('interval-select');
+    fetch('/api/interval').then(r => r.json()).then(({ intervalMs }) => {
+      const o = intSel.querySelector(`option[value="${intervalMs}"]`);
+      if (o) intSel.value = String(intervalMs);
+    });
+    intSel.onchange = () => {
+      fetch('/api/interval', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intervalMs: +intSel.value }) });
+    };
+
+    const nIntSel = document.getElementById('news-interval-select');
+    fetch('/api/news-interval').then(r => r.json()).then(({ intervalMs }) => {
+      const o = nIntSel.querySelector(`option[value="${intervalMs}"]`);
+      if (o) nIntSel.value = String(intervalMs);
+    });
+    nIntSel.onchange = () => {
+      fetch('/api/news-interval', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ intervalMs: +nIntSel.value }) });
+    };
+
+    // ===== Init =====
+    connectSSE();
+  </script>
+</body>
+</html>

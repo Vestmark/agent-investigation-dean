@@ -9,8 +9,7 @@
 
     body {
       font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-      background: #f6f8fa; color: #1f2328;
-      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+      background: #f0f2f5; color: #1f2328;
       user-select: none;
     }
 
@@ -18,7 +17,7 @@
     .topbar {
       display: flex; align-items: center; gap: 12px;
       padding: 6px 16px; background: #1f2328; color: #e6edf3;
-      flex-shrink: 0; border-bottom: 1px solid #30363d;
+      position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #30363d;
     }
     .topbar h1 { font-size: 13px; font-weight: 700; color: #58a6ff; white-space: nowrap; }
     .topbar-controls { display: flex; align-items: center; gap: 10px; margin-left: 12px; }
@@ -48,53 +47,28 @@
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
     .topbar-meta { font-size: 10px; color: #8b949e; }
 
-    /* ===== Panels container ===== */
-    .panels {
-      display: flex; flex-direction: column; flex: 1; min-height: 0;
-      overflow: hidden; gap: 0;
+    /* ===== Page container ===== */
+    .page {
+      max-width: 1400px; margin: 0 auto; padding: 16px 20px 80px;
+      display: flex; flex-direction: column; gap: 16px;
     }
 
-    /* ===== Panel ===== */
-    .panel {
-      display: flex; flex-direction: column; min-height: 0; overflow: hidden;
-      border-bottom: 1px solid #d1d9e0;
+    /* ===== Section cards ===== */
+    .section {
+      background: #fff; border: 1px solid #d1d9e0; border-radius: 8px;
+      overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
-    .panel.docked { flex: 0 0 auto !important; }
-    .panel.docked .panel-body { display: none; }
-    .panel-bar {
-      display: flex; align-items: center; gap: 8px; padding: 4px 12px;
-      background: #f6f8fa; border-bottom: 1px solid #eaeef2; flex-shrink: 0;
+    .section-bar {
+      display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+      background: #f6f8fa; border-bottom: 1px solid #eaeef2;
     }
-    .panel.docked .panel-bar { border-bottom: none; }
-    .panel-bar h3 {
-      font-size: 10px; color: #656d76; text-transform: uppercase;
+    .section-bar h3 {
+      font-size: 11px; color: #656d76; text-transform: uppercase;
       letter-spacing: 0.5px; font-weight: 600;
     }
-    .panel-bar .spacer { flex: 1; }
-    .panel-bar .meta { font-size: 9px; color: #afb8c1; }
-    .pbtn {
-      background: none; border: 1px solid #d1d9e0; color: #656d76;
-      width: 18px; height: 18px; border-radius: 3px; font-size: 11px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; padding: 0; line-height: 1;
-    }
-    .pbtn:hover { background: #eaeef2; color: #1f2328; }
-    .panel-body { flex: 1; overflow: auto; min-height: 0; }
-
-    /* Resize handles */
-    .resize-handle {
-      flex-shrink: 0; height: 5px; cursor: row-resize;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .resize-handle::after {
-      content: ''; width: 40px; height: 3px;
-      border-top: 1px solid #d1d9e0; border-bottom: 1px solid #d1d9e0;
-    }
-    .resize-handle:hover::after { border-color: #0969da; }
-    .drag-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      z-index: 9999; cursor: row-resize;
-    }
+    .section-bar .spacer { flex: 1; }
+    .section-bar .meta { font-size: 9px; color: #afb8c1; }
+    .section-body { overflow: visible; }
 
     /* ===== Shared styles ===== */
     input[type="text"],input[type="number"],input[type="email"],select {
@@ -120,7 +94,7 @@
     .data-table thead th {
       text-align: left; padding: 4px 8px; background: #f6f8fa; color: #656d76;
       font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px;
-      border-bottom: 2px solid #d1d9e0; white-space: nowrap; position: sticky; top: 0; z-index: 1;
+      border-bottom: 2px solid #d1d9e0; white-space: nowrap;
     }
     .data-table thead th.num { text-align: right; }
     .data-table tbody td { padding: 3px 8px; border-bottom: 1px solid #eaeef2; white-space: nowrap; }
@@ -171,19 +145,19 @@
 
     /* ===== Dashboard panel ===== */
     .dashboard-row {
-      display: flex; gap: 0; height: 100%; min-height: 0;
+      display: flex; gap: 0; min-height: 0;
     }
     .dash-section {
-      display: flex; flex-direction: column; overflow: hidden;
+      display: flex; flex-direction: column;
       border-right: 1px solid #d1d9e0;
     }
     .dash-section:last-child { border-right: none; }
     .dash-section-header {
       font-size: 9px; color: #656d76; text-transform: uppercase;
       letter-spacing: 0.5px; font-weight: 600; padding: 6px 12px;
-      background: #f6f8fa; border-bottom: 1px solid #eaeef2; flex-shrink: 0;
+      background: #f6f8fa; border-bottom: 1px solid #eaeef2;
     }
-    .dash-section-body { flex: 1; overflow: auto; min-height: 0; padding: 10px 12px; }
+    .dash-section-body { padding: 10px 12px; }
 
     /* AUM */
     .dash-aum { width: 220px; flex-shrink: 0; }
@@ -198,15 +172,15 @@
     .aum-hh-name { font-weight: 600; }
 
     /* Market Indexes */
-    .dash-indexes { flex: 1; min-width: 0; }
+    .dash-indexes { flex: 1; min-width: 0; max-width: 340px; }
     .indexes-row {
-      display: flex; gap: 0; height: 100%; align-items: stretch;
+      display: flex; flex-direction: column; gap: 0;
     }
     .index-card {
-      flex: 1; display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; border-right: 1px solid #eaeef2;
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-bottom: 1px solid #eaeef2;
     }
-    .index-card:last-child { border-right: none; }
+    .index-card:last-child { border-bottom: none; }
     .index-info { display: flex; flex-direction: column; gap: 1px; }
     .index-name { font-size: 11px; color: #0969da; font-weight: 600; }
     .index-value { font-size: 15px; font-weight: 700; color: #1f2328; font-variant-numeric: tabular-nums; }
@@ -221,13 +195,14 @@
     .index-loading { color: #afb8c1; font-size: 11px; padding: 20px; text-align: center; }
 
     /* Alerts mini panel */
-    .dash-alerts { width: 280px; flex-shrink: 0; }
+    .dash-alerts { flex: 1; min-width: 0; }
     .dash-alerts .dash-section-body { padding: 0; }
     .alert-mini-item {
       display: flex; align-items: center; gap: 6px;
       padding: 5px 12px; border-bottom: 1px solid #eaeef2; font-size: 10px;
+      cursor: pointer; transition: background 0.15s;
     }
-    .alert-mini-item:hover { background: #f6f8fa; }
+    .alert-mini-item:hover { background: #e8f0fe; }
     .alert-mini-sym { color: #0969da; font-weight: 600; width: 45px; flex-shrink: 0; }
     .alert-mini-type { color: #656d76; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .alert-mini-status {
@@ -243,6 +218,26 @@
       background: #d1242f; color: #fff; font-size: 8px; font-weight: 700;
       padding: 1px 4px; border-radius: 6px; margin-left: 4px;
     }
+
+    /* Alert detail modal */
+    .alert-detail-grid {
+      display: grid; grid-template-columns: 100px 1fr; gap: 4px 10px;
+      font-size: 11px; margin-bottom: 14px;
+    }
+    .alert-detail-label { color: #656d76; font-weight: 600; }
+    .alert-detail-value { color: #1f2328; }
+    .alert-actions-bar {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .alert-action-btn {
+      padding: 6px 14px; border: 1px solid #d1d9e0; border-radius: 6px;
+      background: #fff; color: #1f2328; font-size: 11px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s; display: flex; align-items: center; gap: 5px;
+    }
+    .alert-action-btn:hover { background: #f6f8fa; border-color: #0969da; color: #0969da; }
+    .alert-action-btn.danger { color: #d1242f; }
+    .alert-action-btn.danger:hover { border-color: #d1242f; background: #ffebe9; }
+    .alert-action-result { margin-top: 14px; }
 
     /* Holdings action bar */
     .action-bar {
@@ -264,16 +259,16 @@
     .holdings-filters input { width: 70px; }
 
     /* ===== News items ===== */
-    .news-split { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-    .news-col { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .news-split { display: flex; min-height: 0; }
+    .news-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     .news-col-divider { width: 1px; background: #d1d9e0; flex-shrink: 0; }
     .news-col-header {
       padding: 4px 10px; font-size: 9px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.5px; flex-shrink: 0; border-bottom: 2px solid;
+      letter-spacing: 0.5px; border-bottom: 2px solid;
     }
     .news-col-header.positive { background: #f0fff4; color: #1a7f37; border-color: #1a7f37; }
     .news-col-header.negative { background: #fff5f5; color: #d1242f; border-color: #d1242f; }
-    .news-col-body { flex: 1; overflow-y: auto; min-height: 0; }
+    .news-col-body { }
 
     .news-item {
       padding: 6px 10px; border-bottom: 1px solid #eaeef2;
@@ -317,7 +312,6 @@
     .news-status-bar {
       padding: 4px 10px; background: #ddf4ff; color: #0969da; font-size: 9px;
       border-bottom: 1px solid #b6d9f7; display: flex; align-items: center; gap: 4px;
-      position: sticky; top: 0; z-index: 1;
     }
     .news-item-new { opacity: 0; transform: translateY(-4px); }
     .news-toolbar {
@@ -340,7 +334,7 @@
     }
     .chat-tab:hover { color: #1f2328; background: #f6f8fa; }
     .chat-tab.active { color: #0969da; border-bottom-color: #0969da; font-weight: 600; }
-    .chat-container { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .chat-container { display: flex; flex-direction: column; height: 350px; }
     .chat-messages { flex: 1; overflow-y: auto; min-height: 0; padding: 8px 12px; }
     .chat-welcome { color: #afb8c1; font-size: 10px; padding: 6px 0; text-align: center; }
     .chat-msg {
@@ -396,8 +390,8 @@
 
     /* ===== Ticker tape ===== */
     .ticker-bar {
-      flex-shrink: 0; height: 26px; background: #1f2328; color: #e6edf3;
-      overflow: hidden; position: relative; border-top: 1px solid #30363d;
+      height: 28px; background: #1f2328; color: #e6edf3;
+      overflow: hidden; position: sticky; top: 33px; z-index: 99;
       border-bottom: 1px solid #30363d;
     }
     .ticker-track {
@@ -424,14 +418,15 @@
     .ticker-comment { color: #8b949e; font-size: 10px; font-style: italic; margin-left: 2px; }
 
     /* ===== Log drawer ===== */
-    .log-drawer { flex-shrink: 0; transition: height 0.2s ease; overflow: hidden; }
+    .log-drawer { transition: height 0.2s ease; overflow: hidden; }
     .log-drawer.collapsed { height: 24px; }
-    .log-drawer.expanded { height: 180px; }
+    .log-drawer.expanded { height: 250px; }
     .log-tab {
       height: 24px; background: #1f2328; color: #8b949e; display: flex;
       align-items: center; padding: 0 12px; gap: 8px; font-size: 9px;
-      cursor: pointer; border-top: 1px solid #30363d;
+      cursor: pointer; border-radius: 7px 7px 0 0;
     }
+    .log-drawer.collapsed .log-tab { border-radius: 7px; }
     .log-tab:hover { color: #e6edf3; }
     .log-content {
       background: #161b22; color: #c9d1d9; height: calc(100% - 24px);
@@ -466,21 +461,24 @@
     </div>
   </div>
 
-  <!-- Panels -->
-  <div class="panels" id="panels">
+  <!-- Ticker Tape (sticky below topbar) -->
+  <div class="ticker-bar" id="ticker-bar">
+    <div class="ticker-track" id="ticker-track">
+      <span class="ticker-item" style="color:#8b949e">Waiting for price data...</span>
+    </div>
+  </div>
+
+  <!-- Scrollable page -->
+  <div class="page">
 
     <!-- Dashboard (AUM + Indexes + Alerts) -->
-    <div class="panel" id="p-dashboard" style="flex:1">
-      <div class="panel-bar">
+    <div class="section" id="p-dashboard">
+      <div class="section-bar">
         <h3>Dashboard</h3>
         <span class="meta" id="prices-status"></span>
-        <span class="spacer"></span>
-        <button class="pbtn" data-action="dock" title="Minimize">&#x2015;</button>
-        <button class="pbtn" data-action="restore" title="Restore">&#x25A1;</button>
       </div>
-      <div class="panel-body" style="padding:0;overflow:hidden;">
+      <div class="section-body">
         <div class="dashboard-row">
-          <!-- AUM -->
           <div class="dash-section dash-aum">
             <div class="dash-section-header">Portfolio AUM</div>
             <div class="dash-section-body" id="dash-aum">
@@ -488,14 +486,12 @@
               <div class="aum-pl na">Waiting for data...</div>
             </div>
           </div>
-          <!-- Market Indexes -->
           <div class="dash-section dash-indexes">
             <div class="dash-section-header">US Markets</div>
             <div class="dash-section-body" id="dash-indexes" style="padding:0;">
               <div class="index-loading"><span class="spinner"></span> Waiting for prices...</div>
             </div>
           </div>
-          <!-- Alerts -->
           <div class="dash-section dash-alerts">
             <div class="dash-section-header">Alerts <span id="alerts-badge"></span></div>
             <div class="dash-section-body" id="dash-alerts">
@@ -505,15 +501,11 @@
         </div>
       </div>
     </div>
-    <div class="resize-handle" data-above="p-dashboard" data-below="p-holdings"></div>
 
     <!-- Holdings -->
-    <div class="panel" id="p-holdings" style="flex:2">
-      <div class="panel-bar">
+    <div class="section" id="p-holdings">
+      <div class="section-bar">
         <h3>Holdings</h3>
-        <span class="spacer"></span>
-        <button class="pbtn" data-action="dock" title="Minimize">&#x2015;</button>
-        <button class="pbtn" data-action="restore" title="Restore">&#x25A1;</button>
       </div>
       <div class="action-bar" id="holdings-action-bar">
         <span class="action-label" id="action-label">--</span>
@@ -535,7 +527,7 @@
         <input type="text" id="hf-pl" placeholder="P/L >0">
         <button class="btn-s" id="hf-clear">Clear</button>
       </div>
-      <div class="panel-body">
+      <div class="section-body">
         <table class="data-table" id="holdings-table">
           <thead><tr>
             <th><span class="th-sort" data-col="person_name">Person</span></th>
@@ -552,18 +544,15 @@
         </table>
       </div>
     </div>
-    <div class="resize-handle" data-above="p-holdings" data-below="p-news"></div>
 
     <!-- News -->
-    <div class="panel" id="p-news" style="flex:2">
-      <div class="panel-bar">
+    <div class="section" id="p-news">
+      <div class="section-bar">
         <h3>News</h3>
         <span class="meta" id="news-status"></span>
         <span class="spacer"></span>
         <span class="news-countdown" id="news-countdown"></span>
         <button class="btn-s" id="refresh-news-btn" style="font-size:9px;padding:1px 6px;">Refresh</button>
-        <button class="pbtn" data-action="dock" title="Minimize">&#x2015;</button>
-        <button class="pbtn" data-action="restore" title="Restore">&#x25A1;</button>
       </div>
       <div class="news-toolbar">
         <select id="news-filter-symbol"><option value="">All Symbols</option></select>
@@ -571,7 +560,7 @@
         <span style="flex:1"></span>
         <span id="news-updated" style="font-size:9px;color:#afb8c1"></span>
       </div>
-      <div class="panel-body" style="padding:0">
+      <div class="section-body" style="padding:0">
         <div class="news-split">
           <div class="news-col">
             <div class="news-col-header positive">Positive / Neutral</div>
@@ -585,16 +574,13 @@
         </div>
       </div>
     </div>
-    <div class="resize-handle" data-above="p-news" data-below="p-chat"></div>
 
     <!-- Chat -->
-    <div class="panel" id="p-chat" style="flex:1.5">
-      <div class="panel-bar">
+    <div class="section" id="p-chat">
+      <div class="section-bar">
         <h3>AI Chat</h3>
         <span class="spacer"></span>
         <button class="btn-s" id="ai-clear-btn" style="font-size:9px;padding:1px 6px;">Clear</button>
-        <button class="pbtn" data-action="dock" title="Minimize">&#x2015;</button>
-        <button class="pbtn" data-action="restore" title="Restore">&#x25A1;</button>
       </div>
       <div class="chat-tabs" id="agent-tabs">
         <button class="chat-tab active" data-agent="chat">Chat</button>
@@ -615,24 +601,20 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Ticker Tape -->
-  <div class="ticker-bar" id="ticker-bar">
-    <div class="ticker-track" id="ticker-track">
-      <span class="ticker-item" style="color:#8b949e">Waiting for price data...</span>
+    <!-- Activity Log -->
+    <div class="section" style="background:transparent;border:none;box-shadow:none;">
+      <div class="log-drawer collapsed" id="log-drawer">
+        <div class="log-tab" id="log-tab">
+          <span>&#x25B6;</span> Activity Log
+          <span style="flex:1"></span>
+          <span id="log-count" style="font-size:8px;color:#656d76">0 lines</span>
+          <button class="btn-s" id="clear-btn" style="background:#30363d;color:#8b949e;border:none;" onclick="event.stopPropagation()">Clear</button>
+        </div>
+        <div class="log-content" id="log"></div>
+      </div>
     </div>
-  </div>
 
-  <!-- Log Drawer -->
-  <div class="log-drawer collapsed" id="log-drawer">
-    <div class="log-tab" id="log-tab">
-      <span>&#x25B6;</span> Activity Log
-      <span style="flex:1"></span>
-      <span id="log-count" style="font-size:8px;color:#656d76">0 lines</span>
-      <button class="btn-s" id="clear-btn" style="background:#30363d;color:#8b949e;border:none;" onclick="event.stopPropagation()">Clear</button>
-    </div>
-    <div class="log-content" id="log"></div>
   </div>
 
   <script>
@@ -886,7 +868,7 @@
         if (a._triggered) { statusClass = 'triggered'; statusLabel = 'Triggered'; }
         else if (!a.enabled) { statusClass = 'disabled'; statusLabel = 'Off'; }
 
-        html += `<div class="alert-mini-item">
+        html += `<div class="alert-mini-item" onclick="openAlertDetail(${a.id})">
           <span class="alert-mini-sym">${a.symbol}</span>
           <span class="alert-mini-type">${typeLabel} ${threshStr}</span>
           <span class="alert-mini-status ${statusClass}">${statusLabel}</span>
@@ -902,6 +884,112 @@
         allAlerts = alerts.map(a => ({ ...a, _triggered: false }));
         checkAlertsTrigger();
       } catch (e) {}
+    }
+
+    // ===== Alert Detail Modal =====
+    function openAlertDetail(alertId) {
+      const alert = allAlerts.find(a => a.id === alertId);
+      if (!alert) return;
+
+      const typeLabel = alert.alert_type.replace(/_/g, ' ');
+      const threshStr = alert.alert_type.includes('change') ? alert.threshold + '%' : '$' + alert.threshold.toFixed(2);
+      const price = currentPriceMap[alert.symbol] || 0;
+      const statusText = alert._triggered ? 'TRIGGERED' : alert.enabled ? 'Active' : 'Disabled';
+      const statusColor = alert._triggered ? '#d1242f' : alert.enabled ? '#1a7f37' : '#afb8c1';
+
+      const bodyHtml = `
+        <div class="alert-detail-grid">
+          <span class="alert-detail-label">Symbol</span>
+          <span class="alert-detail-value" style="color:#0969da;font-weight:700">${alert.symbol}</span>
+          <span class="alert-detail-label">Alert Type</span>
+          <span class="alert-detail-value">${typeLabel}</span>
+          <span class="alert-detail-label">Threshold</span>
+          <span class="alert-detail-value">${threshStr}</span>
+          <span class="alert-detail-label">Current Price</span>
+          <span class="alert-detail-value">${price ? '$' + price.toFixed(2) : 'N/A'}</span>
+          <span class="alert-detail-label">Status</span>
+          <span class="alert-detail-value" style="color:${statusColor};font-weight:600">${statusText}</span>
+          ${alert.person_name ? `<span class="alert-detail-label">Person</span><span class="alert-detail-value">${alert.person_name}</span>` : ''}
+          ${alert.household ? `<span class="alert-detail-label">Household</span><span class="alert-detail-value">${alert.household}</span>` : ''}
+          <span class="alert-detail-label">Created</span>
+          <span class="alert-detail-value">${alert.created_at ? new Date(alert.created_at).toLocaleString() : 'N/A'}</span>
+          ${alert.last_triggered ? `<span class="alert-detail-label">Last Triggered</span><span class="alert-detail-value">${new Date(alert.last_triggered).toLocaleString()}</span>` : ''}
+        </div>
+        <div class="alert-actions-bar">
+          <button class="alert-action-btn" data-action="email">Email Client</button>
+          <button class="alert-action-btn" data-action="trade">Trade Analysis</button>
+          <button class="alert-action-btn" data-action="news">Additional News</button>
+          <button class="alert-action-btn danger" data-action="dismiss">Dismiss Alert</button>
+        </div>
+        <div class="alert-action-result" id="alert-action-result"></div>`;
+
+      const overlay = showModal(`Alert: ${alert.symbol} — ${typeLabel}`, bodyHtml, '');
+
+      overlay.querySelectorAll('.alert-action-btn').forEach(btn => {
+        btn.addEventListener('click', () => handleAlertAction(alert, btn.dataset.action, overlay));
+      });
+    }
+
+    async function handleAlertAction(alert, action, overlay) {
+      const resultEl = overlay.querySelector('#alert-action-result');
+      const typeLabel = alert.alert_type.replace(/_/g, ' ');
+      const threshStr = alert.alert_type.includes('change') ? alert.threshold + '%' : '$' + alert.threshold.toFixed(2);
+      const price = currentPriceMap[alert.symbol] || 0;
+      const person = alert.person_name || '';
+      const household = alert.household || '';
+
+      // Disable all action buttons while processing
+      overlay.querySelectorAll('.alert-action-btn').forEach(b => b.disabled = true);
+
+      // Each action routes to its own dedicated Mastra agent
+      const agentRoutes = {
+        email: {
+          agent: 'email',
+          label: 'Email Agent',
+          prompt: `Draft and send a client advisement email about a triggered alert for ${alert.symbol}. Alert: ${typeLabel} at ${threshStr}. Current price: $${price.toFixed(2)}. Client: ${person} in ${household} household. Include position details, what the alert means, and a recommendation.`
+        },
+        trade: {
+          agent: 'trade-analysis',
+          label: 'Trade Analysis Agent',
+          prompt: `Analyze trade options for ${alert.symbol}. Alert condition: ${typeLabel} at ${threshStr}. Current price: $${price.toFixed(2)}. Person: ${person}, Household: ${household}. Provide a specific trade recommendation with share count.`
+        },
+        news: {
+          agent: 'news-lookup',
+          label: 'News Lookup Agent',
+          prompt: `Get the latest news and market context for ${alert.symbol}. Alert condition: ${typeLabel} at ${threshStr}. Current price: $${price.toFixed(2)}. Person: ${person}, Household: ${household}. Focus on what is driving the price and what to watch.`
+        },
+        dismiss: {
+          agent: 'alert-actions',
+          label: 'Alert Actions Agent',
+          prompt: `Dismiss (delete) alert ID ${alert.id} for ${alert.symbol} (${typeLabel} at ${threshStr}). Use the delete-alert tool.`
+        }
+      };
+
+      const route = agentRoutes[action];
+      resultEl.innerHTML = `<span class="spinner"></span> ${route.label} is working...`;
+
+      try {
+        const endpoint = action === 'email' ? '/api/email' : `/api/agent/${route.agent}`;
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: route.prompt })
+        });
+        const { result, error } = await res.json();
+        if (error) throw new Error(error);
+
+        resultEl.innerHTML = '<pre>' + result.replace(/</g, '&lt;') + '</pre>';
+
+        // If dismissed, refresh alerts list
+        if (action === 'dismiss') {
+          await fetchAlerts();
+          setTimeout(() => overlay.remove(), 1500);
+        }
+      } catch (e) {
+        resultEl.innerHTML = '<div style="color:#d1242f">Error: ' + e.message + '</div>';
+      }
+
+      overlay.querySelectorAll('.alert-action-btn').forEach(b => b.disabled = false);
     }
 
     // ===== Ticker tape =====
@@ -1073,57 +1161,6 @@
       countdownEl.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;margin:0"></span> Scanning...';
       await fetch('/api/news-refresh', { method: 'POST' });
     };
-
-    // ===== Panel Dock/Restore =====
-    document.getElementById('panels').addEventListener('click', (e) => {
-      const btn = e.target.closest('.pbtn');
-      if (!btn) return;
-      const panel = btn.closest('.panel');
-      const action = btn.dataset.action;
-      if (action === 'dock') {
-        if (!panel.dataset.prevFlex) panel.dataset.prevFlex = panel.style.flex;
-        panel.classList.add('docked');
-      } else if (action === 'restore') {
-        panel.classList.remove('docked');
-        if (panel.dataset.prevFlex) panel.style.flex = panel.dataset.prevFlex;
-      }
-    });
-
-    // ===== Resize Handles =====
-    document.querySelectorAll('.resize-handle').forEach(handle => {
-      handle.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        const abovePanel = document.getElementById(handle.dataset.above);
-        const belowPanel = document.getElementById(handle.dataset.below);
-        if (!abovePanel || !belowPanel) return;
-        if (abovePanel.classList.contains('docked') || belowPanel.classList.contains('docked')) return;
-        const overlay = document.createElement('div');
-        overlay.className = 'drag-overlay';
-        document.body.appendChild(overlay);
-        const startY = e.clientY;
-        const startAboveH = abovePanel.getBoundingClientRect().height;
-        const startBelowH = belowPanel.getBoundingClientRect().height;
-        function onMove(ev) {
-          const dy = ev.clientY - startY;
-          abovePanel.style.flex = `0 0 ${Math.max(30, startAboveH + dy)}px`;
-          belowPanel.style.flex = `0 0 ${Math.max(30, startBelowH - dy)}px`;
-        }
-        function onUp() {
-          document.removeEventListener('mousemove', onMove);
-          document.removeEventListener('mouseup', onUp);
-          overlay.remove();
-          const aH = abovePanel.getBoundingClientRect().height;
-          const bH = belowPanel.getBoundingClientRect().height;
-          const total = aH + bH;
-          abovePanel.style.flex = String(aH / total * 4);
-          belowPanel.style.flex = String(bH / total * 4);
-          abovePanel.dataset.prevFlex = abovePanel.style.flex;
-          belowPanel.dataset.prevFlex = belowPanel.style.flex;
-        }
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-      });
-    });
 
     // ===== Holdings =====
     let holdingsSortCol = 'person_name';

@@ -12,6 +12,9 @@ import { reportingAgent } from "./agents/reporting.js";
 import { sentimentAgent } from "./agents/sentiment.js";
 import { tickerAgent } from "./agents/ticker.js";
 import { countdownAgent } from "./agents/countdown.js";
+import { alertActionsAgent } from "./agents/alert-actions.js";
+import { tradeAnalysisAgent } from "./agents/trade-analysis.js";
+import { newsLookupAgent } from "./agents/news-lookup.js";
 import { updateAlertPriceMap } from "./tools/alerts.js";
 import { loadSymbols } from "./symbols.js";
 import { fetchNewsForSymbol } from "./tools/fetch-news.js";
@@ -60,7 +63,7 @@ let newsTimer: ReturnType<typeof setTimeout> | null = null;
 
 // --- Mastra setup ---
 const mastra = new Mastra({
-  agents: { stockMonitorAgent, newsAnalystAgent, advisorAgent, calendarAgent, chatAgent, emailAgent, alertsAgent, researchAgent, rebalanceAgent, reportingAgent, sentimentAgent, tickerAgent, countdownAgent },
+  agents: { stockMonitorAgent, newsAnalystAgent, advisorAgent, calendarAgent, chatAgent, emailAgent, alertsAgent, researchAgent, rebalanceAgent, reportingAgent, sentimentAgent, tickerAgent, countdownAgent, alertActionsAgent, tradeAnalysisAgent, newsLookupAgent },
 });
 
 const priceAgent = mastra.getAgent("stockMonitorAgent");
@@ -543,6 +546,9 @@ async function main(): Promise<void> {
     rebalance: "rebalanceAgent",
     reporting: "reportingAgent",
     sentiment: "sentimentAgent",
+    "alert-actions": "alertActionsAgent",
+    "trade-analysis": "tradeAnalysisAgent",
+    "news-lookup": "newsLookupAgent",
   };
   for (const [name, agentId] of Object.entries(agentMap)) {
     const agent = mastra.getAgent(agentId);

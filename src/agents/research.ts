@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { bedrockProvider } from "../bedrock.js";
+import { agentMemory } from "../memory.js";
 import { fetchCompanyProfile, fetchSECFilings } from "../tools/research.js";
 import { queryPortfolio, queryPrices } from "../tools/market-query.js";
 import { fetchRedditSentiment } from "../tools/sentiment.js";
@@ -21,4 +22,5 @@ Structure your output as a clear research report with sections. Include specific
 Be thorough but concise. Use bullet points within sections.`,
   model: bedrockProvider("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
   tools: { fetchCompanyProfile, fetchSECFilings, queryPortfolio, queryPrices, fetchRedditSentiment },
+  memory: agentMemory,
 });

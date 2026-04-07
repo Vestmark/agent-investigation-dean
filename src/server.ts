@@ -335,7 +335,7 @@ app.post("/api/email", async (req: Request, res: Response) => {
 });
 
 // --- Chat Agent API ---
-type ChatHandler = (agent: string, message: string, history: { role: string; content: string }[]) => Promise<string>;
+type ChatHandler = (agent: string, message: string, threadId: string) => Promise<string>;
 let onChatRequest: ChatHandler | null = null;
 
 export function setChatHandler(handler: ChatHandler): void {
@@ -343,15 +343,15 @@ export function setChatHandler(handler: ChatHandler): void {
 }
 
 app.post("/api/chat", async (req: Request, res: Response) => {
-  const { agent, message, history } = req.body as {
+  const { agent, message, threadId } = req.body as {
     agent?: string;
     message?: string;
-    history?: { role: string; content: string }[];
+    threadId?: string;
   };
   if (!agent || !message) { res.status(400).json({ error: "agent and message required" }); return; }
   if (!onChatRequest) { res.status(503).json({ error: "chat not ready" }); return; }
   try {
-    const result = await onChatRequest(agent, message, history ?? []);
+    const result = await onChatRequest(agent, message, threadId ?? "default");
     res.json({ result });
   } catch (error) {
     res.status(500).json({ error: String(error) });
@@ -359,7 +359,7 @@ app.post("/api/chat", async (req: Request, res: Response) => {
 });
 
 // --- Agent API (generic handler for multiple agents) ---
-type AgentHandler = (prompt: string) => Promise<string>;
+type AgentHandler = (prompt: string, threadId: string) => Promise<string>;
 const agentHandlers: Record<string, AgentHandler> = {};
 
 export function setAgentHandler(name: string, handler: AgentHandler): void {
@@ -368,12 +368,12 @@ export function setAgentHandler(name: string, handler: AgentHandler): void {
 
 app.post("/api/agent/:name", async (req: Request, res: Response) => {
   const name = req.params.name as string;
-  const { prompt } = req.body as { prompt?: string };
+  const { prompt, threadId } = req.body as { prompt?: string; threadId?: string };
   if (!prompt) { res.status(400).json({ error: "prompt is required" }); return; }
   const handler = agentHandlers[name];
   if (!handler) { res.status(404).json({ error: `agent '${name}' not found` }); return; }
   try {
-    const result = await handler(prompt);
+    const result = await handler(prompt, threadId ?? "default");
     res.json({ result });
   } catch (error) {
     res.status(500).json({ error: String(error) });

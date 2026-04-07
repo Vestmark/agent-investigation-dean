@@ -68,6 +68,15 @@
     }
     .section-bar .spacer { flex: 1; }
     .section-bar .meta { font-size: 9px; color: #afb8c1; }
+    .section.docked > *:not(.section-bar) { display: none; }
+    .section.docked { overflow: hidden; }
+    .section.docked .section-bar { border-bottom: none; }
+    .dock-btn {
+      background: none; border: none; color: #8b949e; cursor: pointer;
+      font-size: 11px; padding: 0 4px; line-height: 1; font-family: inherit;
+      transition: color 0.15s;
+    }
+    .dock-btn:hover { color: #1f2328; }
     .section-body { overflow: visible; }
 
     /* ===== Shared styles ===== */
@@ -194,6 +203,31 @@
     .index-change-pct { white-space: nowrap; }
     .index-loading { color: #afb8c1; font-size: 11px; padding: 20px; text-align: center; }
 
+    /* Watchlist */
+    .dash-watchlist { width: 180px; flex-shrink: 0; }
+    .dash-watchlist .dash-section-body { padding: 0; }
+    .watchlist-add { display: flex; gap: 0; padding: 6px 8px; border-bottom: 1px solid #eaeef2; }
+    .watchlist-add input {
+      flex: 1; min-width: 0; border-radius: 3px 0 0 3px; border-right: none;
+      font-size: 10px; padding: 3px 6px; text-transform: uppercase;
+    }
+    .watchlist-add button {
+      border-radius: 0 3px 3px 0; font-size: 10px; padding: 3px 8px;
+      background: #238636; color: #fff;
+    }
+    .watchlist-items { max-height: 120px; overflow-y: auto; }
+    .watchlist-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 3px 8px; font-size: 10px; border-bottom: 1px solid #f0f2f5;
+    }
+    .watchlist-item:hover { background: #f6f8fa; }
+    .watchlist-sym { font-weight: 600; color: #0969da; }
+    .watchlist-rm {
+      background: none; border: none; color: #afb8c1; cursor: pointer;
+      font-size: 12px; padding: 0 2px; line-height: 1;
+    }
+    .watchlist-rm:hover { color: #d1242f; }
+
     /* Alerts mini panel */
     .dash-alerts { flex: 1; min-width: 0; }
     .dash-alerts .dash-section-body { padding: 0; }
@@ -268,7 +302,7 @@
     }
     .news-col-header.positive { background: #f0fff4; color: #1a7f37; border-color: #1a7f37; }
     .news-col-header.negative { background: #fff5f5; color: #d1242f; border-color: #d1242f; }
-    .news-col-body { }
+    .news-col-body { max-height: 220px; overflow-y: auto; }
 
     .news-item {
       padding: 6px 10px; border-bottom: 1px solid #eaeef2;
@@ -334,7 +368,7 @@
     }
     .chat-tab:hover { color: #1f2328; background: #f6f8fa; }
     .chat-tab.active { color: #0969da; border-bottom-color: #0969da; font-weight: 600; }
-    .chat-container { display: flex; flex-direction: column; height: 350px; }
+    .chat-container { display: flex; flex-direction: column; height: 233px; }
     .chat-messages { flex: 1; overflow-y: auto; min-height: 0; padding: 8px 12px; }
     .chat-welcome { color: #afb8c1; font-size: 10px; padding: 6px 0; text-align: center; }
     .chat-msg {
@@ -476,6 +510,8 @@
       <div class="section-bar">
         <h3>Dashboard</h3>
         <span class="meta" id="prices-status"></span>
+        <span class="spacer"></span>
+        <button class="dock-btn" data-panel="p-dashboard" title="Minimize">&#x25BC;</button>
       </div>
       <div class="section-body">
         <div class="dashboard-row">
@@ -498,6 +534,16 @@
               <div class="alert-mini-empty">Loading alerts...</div>
             </div>
           </div>
+          <div class="dash-section dash-watchlist">
+            <div class="dash-section-header">Watchlist <span id="watchlist-count"></span></div>
+            <div class="dash-section-body">
+              <div class="watchlist-add">
+                <input type="text" id="watchlist-input" placeholder="SYMBOL">
+                <button id="watchlist-add-btn">+</button>
+              </div>
+              <div class="watchlist-items" id="watchlist-items"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -506,6 +552,8 @@
     <div class="section" id="p-holdings">
       <div class="section-bar">
         <h3>Holdings</h3>
+        <span class="spacer"></span>
+        <button class="dock-btn" data-panel="p-holdings" title="Minimize">&#x25BC;</button>
       </div>
       <div class="action-bar" id="holdings-action-bar">
         <span class="action-label" id="action-label">--</span>
@@ -553,6 +601,7 @@
         <span class="spacer"></span>
         <span class="news-countdown" id="news-countdown"></span>
         <button class="btn-s" id="refresh-news-btn" style="font-size:9px;padding:1px 6px;">Refresh</button>
+        <button class="dock-btn" data-panel="p-news" title="Minimize">&#x25BC;</button>
       </div>
       <div class="news-toolbar">
         <select id="news-filter-symbol"><option value="">All Symbols</option></select>
@@ -581,6 +630,7 @@
         <h3>AI Chat</h3>
         <span class="spacer"></span>
         <button class="btn-s" id="ai-clear-btn" style="font-size:9px;padding:1px 6px;">Clear</button>
+        <button class="dock-btn" data-panel="p-chat" title="Minimize">&#x25BC;</button>
       </div>
       <div class="chat-tabs" id="agent-tabs">
         <button class="chat-tab active" data-agent="chat">Chat</button>
@@ -618,6 +668,26 @@
   </div>
 
   <script>
+    // ===== Panel Docking =====
+    const dockedPanels = JSON.parse(localStorage.getItem('docked-panels') || '[]');
+    dockedPanels.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('docked');
+    });
+    document.querySelectorAll('.dock-btn').forEach(btn => {
+      const panel = document.getElementById(btn.dataset.panel);
+      if (panel && panel.classList.contains('docked')) btn.innerHTML = '&#x25B6;';
+      btn.addEventListener('click', () => {
+        panel.classList.toggle('docked');
+        const isDocked = panel.classList.contains('docked');
+        btn.innerHTML = isDocked ? '&#x25B6;' : '&#x25BC;';
+        const saved = JSON.parse(localStorage.getItem('docked-panels') || '[]');
+        if (isDocked) { if (!saved.includes(btn.dataset.panel)) saved.push(btn.dataset.panel); }
+        else { const idx = saved.indexOf(btn.dataset.panel); if (idx !== -1) saved.splice(idx, 1); }
+        localStorage.setItem('docked-panels', JSON.stringify(saved));
+      });
+    });
+
     // ===== Log Drawer =====
     const logDrawer = document.getElementById('log-drawer');
     const logEl = document.getElementById('log');
@@ -1111,12 +1181,19 @@
       return true;
     }
 
+    const NEWS_COL_LIMIT = 5;
+
     function refreshNewsView() {
       newsPositive.innerHTML = '';
       newsNegative.innerHTML = '';
       const filtered = allNewsArticles.filter(filterNewsArticle);
       if (!filtered.length) { newsPositive.innerHTML = '<div class="news-loading">No matching news.</div>'; return; }
-      for (const item of filtered) getTargetFeed(item).appendChild(createNewsItem(item, false));
+      let posCount = 0, negCount = 0;
+      for (const item of filtered) {
+        if (item.impact === 'negative') { if (negCount >= NEWS_COL_LIMIT) continue; negCount++; }
+        else { if (posCount >= NEWS_COL_LIMIT) continue; posCount++; }
+        getTargetFeed(item).appendChild(createNewsItem(item, false));
+      }
     }
 
     function renderNews(articles) {
@@ -1131,8 +1208,10 @@
       updateNewsFilterOptions();
       for (const item of articles) {
         if (!filterNewsArticle(item)) continue;
+        const feed = getTargetFeed(item);
+        if (feed.querySelectorAll('.news-item').length >= NEWS_COL_LIMIT) continue;
         const d = createNewsItem(item, true);
-        getTargetFeed(item).appendChild(d);
+        feed.appendChild(d);
         requestAnimationFrame(() => d.classList.remove('news-item-new'));
       }
     }
@@ -1408,6 +1487,50 @@
     }
     fetchHoldings();
 
+    // ===== Watchlist =====
+    const watchlistItems = document.getElementById('watchlist-items');
+    const watchlistInput = document.getElementById('watchlist-input');
+    const watchlistCount = document.getElementById('watchlist-count');
+
+    function renderWatchlist(symbols) {
+      watchlistCount.textContent = symbols.length;
+      watchlistItems.innerHTML = symbols.map(s =>
+        `<div class="watchlist-item"><span class="watchlist-sym">${s}</span><button class="watchlist-rm" data-sym="${s}">&times;</button></div>`
+      ).join('');
+      watchlistItems.querySelectorAll('.watchlist-rm').forEach(btn => {
+        btn.onclick = () => removeWatchlistSymbol(btn.dataset.sym);
+      });
+    }
+
+    async function fetchWatchlist() {
+      const res = await fetch('/api/symbols');
+      const { symbols } = await res.json();
+      renderWatchlist(symbols);
+    }
+
+    async function addWatchlistSymbol(sym) {
+      const s = sym.trim().toUpperCase();
+      if (!s) return;
+      const res = await fetch('/api/symbols', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: s })
+      });
+      const { symbols } = await res.json();
+      renderWatchlist(symbols);
+      watchlistInput.value = '';
+    }
+
+    async function removeWatchlistSymbol(sym) {
+      const res = await fetch('/api/symbols/' + encodeURIComponent(sym), { method: 'DELETE' });
+      const { symbols } = await res.json();
+      renderWatchlist(symbols);
+      fetchHoldings();
+    }
+
+    document.getElementById('watchlist-add-btn').onclick = () => addWatchlistSymbol(watchlistInput.value);
+    watchlistInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') addWatchlistSymbol(watchlistInput.value); });
+    fetchWatchlist();
+
     // ===== Modal System =====
     function showModal(title, bodyHtml, footerHtml) {
       document.querySelector('.modal-overlay')?.remove();
@@ -1553,6 +1676,9 @@ Provide: Position Assessment, Trading Options, Hedging Strategies, Risk Factors,
     };
     let activeAgent = 'chat';
     const chatHistory = {};
+    // Persistent thread ID per browser session — stored in sessionStorage so it survives page refreshes within the same tab
+    const sessionThreadId = sessionStorage.getItem('threadId') || crypto.randomUUID();
+    sessionStorage.setItem('threadId', sessionThreadId);
     const chatMessages = document.getElementById('chat-messages');
     const chatInput = document.getElementById('chat-input');
     const chatSendBtn = document.getElementById('chat-send');
@@ -1644,9 +1770,10 @@ Provide: Position Assessment, Trading Options, Hedging Strategies, Risk Factors,
         let res;
         if (conversational.includes(activeAgent)) {
           res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ agent: activeAgent, message: text, history: chatHistory[activeAgent].slice(0, -1) }) });
+            body: JSON.stringify({ agent: activeAgent, message: text, threadId: sessionThreadId }) });
         } else {
-          res = await fetch(`/api/agent/${activeAgent}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: text }) });
+          res = await fetch(`/api/agent/${activeAgent}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: text, threadId: sessionThreadId }) });
         }
         const { result, error } = await res.json();
         if (error) throw new Error(error);

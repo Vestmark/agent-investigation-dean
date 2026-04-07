@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { bedrockProvider } from "../bedrock.js";
+import { agentMemory } from "../memory.js";
 import { listAlerts, createAlert, deleteAlert, checkAlerts } from "../tools/alerts.js";
 import { queryPortfolio, queryPrices } from "../tools/market-query.js";
 import { sendEmail } from "../tools/email.js";
@@ -36,4 +37,5 @@ Delete this alert using the delete-alert tool. Confirm deletion.
 Always be concise and professional. Reference specific numbers.`,
   model: bedrockProvider("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
   tools: { listAlerts, createAlert, deleteAlert, checkAlerts, queryPortfolio, queryPrices, sendEmail },
+  memory: agentMemory,
 });

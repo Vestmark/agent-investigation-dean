@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { bedrockProvider } from "../bedrock.js";
+import { agentMemory } from "../memory.js";
 import { queryPortfolio, queryPrices } from "../tools/market-query.js";
 import { listReports, saveReport, deleteReport } from "../tools/reports.js";
 import { sendEmail } from "../tools/email.js";
@@ -27,4 +28,5 @@ When listing reports, use list-reports to show saved reports.
 Format reports as clean plain text with clear section headers, bullet points, and aligned numbers. Always include a generation timestamp and disclaimer.`,
   model: bedrockProvider("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
   tools: { queryPortfolio, queryPrices, listReports, saveReport, deleteReport, sendEmail },
+  memory: agentMemory,
 });

@@ -554,8 +554,13 @@ async function main(): Promise<void> {
   };
   for (const [name, agentId] of Object.entries(agentMap)) {
     const agent = mastra.getAgent(agentId);
-    setAgentHandler(name, async (prompt: string) => {
-      const response = await agent.generate([{ role: "user", content: prompt }]);
+    setAgentHandler(name, async (prompt: string, threadId: string) => {
+      const response = await agent.generate([{ role: "user", content: prompt }], {
+        memory: {
+          thread: `${name}-${threadId}`,
+          resource: "dashboard-user",
+        },
+      });
       return response.text;
     });
   }
@@ -565,14 +570,15 @@ async function main(): Promise<void> {
   const chAgent = mastra.getAgent("chatAgent");
   const today = () => new Date().toISOString().split("T")[0];
 
-  setChatHandler(async (agentName: string, message: string, history: { role: string; content: string }[]) => {
+  setChatHandler(async (agentName: string, message: string, threadId: string) => {
     const agent = agentName === "calendar" ? calAgent : chAgent;
     const systemDate = `Today's date is ${today()}.`;
-    const messages = [
-      ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-      { role: "user" as const, content: `${systemDate}\n\n${message}` },
-    ];
-    const response = await agent.generate(messages);
+    const response = await agent.generate([{ role: "user", content: `${systemDate}\n\n${message}` }], {
+      memory: {
+        thread: `${agentName}-${threadId}`,
+        resource: "dashboard-user",
+      },
+    });
     return response.text;
   });
 

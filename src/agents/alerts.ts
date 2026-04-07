@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { bedrockProvider } from "../bedrock.js";
+import { agentMemory } from "../memory.js";
 import { listAlerts, createAlert, deleteAlert, checkAlerts } from "../tools/alerts.js";
 import { queryPortfolio, queryPrices } from "../tools/market-query.js";
 
@@ -32,4 +33,5 @@ When asked to manage alerts:
 Use query-prices and query-portfolio for context when users ask about appropriate thresholds.`,
   model: bedrockProvider("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
   tools: { listAlerts, createAlert, deleteAlert, checkAlerts, queryPortfolio, queryPrices },
+  memory: agentMemory,
 });

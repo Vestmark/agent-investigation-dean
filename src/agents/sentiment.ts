@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { bedrockProvider } from "../bedrock.js";
+import { agentMemory } from "../memory.js";
 import { fetchRedditSentiment, fetchStockTwitsSentiment } from "../tools/sentiment.js";
 import { queryPortfolio, queryPrices } from "../tools/market-query.js";
 
@@ -23,4 +24,5 @@ Your analysis should include:
 Be specific about post counts and engagement metrics. Flag any unusual spikes in activity. Rate sentiment on a scale: Strong Bearish, Bearish, Neutral, Bullish, Strong Bullish.`,
   model: bedrockProvider("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
   tools: { fetchRedditSentiment, fetchStockTwitsSentiment, queryPortfolio, queryPrices },
+  memory: agentMemory,
 });

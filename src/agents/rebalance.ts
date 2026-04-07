@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { bedrockProvider } from "../bedrock.js";
+import { agentMemory } from "../memory.js";
 import { fetchCompanyProfile } from "../tools/research.js";
 import { queryPortfolio, queryPrices } from "../tools/market-query.js";
 
@@ -25,4 +26,5 @@ When filtering by household or person, focus the analysis on that subset.
 Present numbers clearly with dollar amounts and percentages. Use tables where helpful. Be actionable — suggest specific share counts to trade.`,
   model: bedrockProvider("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
   tools: { fetchCompanyProfile, queryPortfolio, queryPrices },
+  memory: agentMemory,
 });

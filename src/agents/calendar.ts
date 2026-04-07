@@ -1,5 +1,6 @@
 import { Agent } from "@mastra/core/agent";
 import { bedrockProvider } from "../bedrock.js";
+import { agentMemory } from "../memory.js";
 import { listEvents, createEvent, removeEvent } from "../tools/calendar.js";
 
 export const calendarAgent = new Agent({
@@ -23,4 +24,5 @@ When deleting, confirm the deletion.
 Always be concise and helpful.`,
   model: bedrockProvider("us.anthropic.claude-haiku-4-5-20251001-v1:0"),
   tools: { listEvents, createEvent, removeEvent },
+  memory: agentMemory,
 });

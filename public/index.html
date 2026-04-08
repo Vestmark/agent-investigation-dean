@@ -300,8 +300,8 @@
       padding: 4px 10px; font-size: 9px; font-weight: 600; text-transform: uppercase;
       letter-spacing: 0.5px; border-bottom: 2px solid;
     }
-    .news-col-header.positive { background: #f0fff4; color: #1a7f37; border-color: #1a7f37; }
-    .news-col-header.negative { background: #fff5f5; color: #d1242f; border-color: #d1242f; }
+    .news-col-header.positive { background: #ddf4ff; color: #0969da; border-color: #0969da; }
+    .news-col-header.negative { background: #f6f8fa; color: #656d76; border-color: #656d76; }
     .news-col-body { max-height: 220px; overflow-y: auto; }
 
     .news-item {
@@ -348,6 +348,24 @@
       border-bottom: 1px solid #b6d9f7; display: flex; align-items: center; gap: 4px;
     }
     .news-item-new { opacity: 0; transform: translateY(-4px); }
+
+    /* Trending-style general news */
+    .news-trending { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-bottom: 1px solid #eaeef2; }
+    .news-trending:hover { background: #f6f8fa; }
+    .news-trending-num {
+      flex-shrink: 0; width: 20px; height: 20px; border-radius: 4px;
+      background: #7c3aed; color: #fff; font-size: 10px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; margin-top: 1px;
+    }
+    .news-trending-body { flex: 1; min-width: 0; }
+    .news-trending-title { font-size: 12px; font-weight: 600; color: #1f2328; line-height: 1.35; }
+    .news-trending-title a { color: #1f2328; text-decoration: none; }
+    .news-trending-title a:hover { color: #0969da; text-decoration: underline; }
+    .news-trending-meta { font-size: 10px; color: #8b949e; margin-top: 2px; }
+    .news-trending-new {
+      display: inline-block; background: #7c3aed; color: #fff; font-size: 8px; font-weight: 700;
+      padding: 1px 5px; border-radius: 3px; margin-left: 6px; vertical-align: middle; text-transform: uppercase;
+    }
     .news-toolbar {
       display: flex; gap: 6px; align-items: center; padding: 3px 10px;
       background: #fff; border-bottom: 1px solid #eaeef2; flex-shrink: 0;
@@ -612,13 +630,13 @@
       <div class="section-body" style="padding:0">
         <div class="news-split">
           <div class="news-col">
-            <div class="news-col-header positive">Positive / Neutral</div>
-            <div class="news-col-body" id="news-positive"></div>
+            <div class="news-col-header positive">Specific Client News</div>
+            <div class="news-col-body" id="news-client"></div>
           </div>
           <div class="news-col-divider"></div>
           <div class="news-col">
-            <div class="news-col-header negative">Negative</div>
-            <div class="news-col-body" id="news-negative"></div>
+            <div class="news-col-header negative">&#9889; Trending</div>
+            <div class="news-col-body" id="news-general"></div>
           </div>
         </div>
       </div>
@@ -718,8 +736,8 @@
     }
 
     // ===== DOM refs =====
-    const newsPositive = document.getElementById('news-positive');
-    const newsNegative = document.getElementById('news-negative');
+    const newsClient = document.getElementById('news-client');
+    const newsGeneral = document.getElementById('news-general');
     const newsUpdatedEl = document.getElementById('news-updated');
     const lastUpdatedEl = document.getElementById('last-updated');
     const holdingsBody = document.getElementById('holdings-body');
@@ -767,14 +785,14 @@
       });
       src.addEventListener('news-clear', () => {
         allNewsArticles = [];
-        newsPositive.innerHTML = '';
-        newsNegative.innerHTML = '';
+        newsClient.innerHTML = '';
+        newsGeneral.innerHTML = '';
         newsUpdatedEl.textContent = '';
       });
       src.addEventListener('news-status', (e) => {
         const { message } = JSON.parse(e.data);
-        let statusEl = newsPositive.querySelector('.news-status-bar');
-        if (!statusEl) { statusEl = document.createElement('div'); statusEl.className = 'news-status-bar'; newsPositive.prepend(statusEl); }
+        let statusEl = newsClient.querySelector('.news-status-bar');
+        if (!statusEl) { statusEl = document.createElement('div'); statusEl.className = 'news-status-bar'; newsClient.prepend(statusEl); }
         if (message.startsWith('Done')) {
           statusEl.innerHTML = '&#x2713; ' + message;
           setTimeout(() => statusEl.remove(), 3000);
@@ -1171,7 +1189,21 @@
       return d;
     }
 
-    function getTargetFeed(item) { return item.impact === 'negative' ? newsNegative : newsPositive; }
+    function createTrendingItem(item, num, isNew) {
+      const d = document.createElement('div');
+      d.className = 'news-trending' + (isNew ? ' news-item-new' : '');
+      const newBadge = isNew ? '<span class="news-trending-new">New</span>' : '';
+      d.innerHTML = `
+        <span class="news-trending-num">${num}</span>
+        <div class="news-trending-body">
+          <div class="news-trending-title"><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a>${newBadge}</div>
+          <div class="news-trending-meta">${item.source} &middot; ${timeAgo(item.pubDate)}</div>
+        </div>`;
+      return d;
+    }
+
+    function isClientSymbol(sym) { return sym !== 'MARKET' && allHoldings.some(h => h.symbol === sym && h.positions > 0); }
+    function getTargetFeed(item) { return isClientSymbol(item.symbol) ? newsClient : newsGeneral; }
 
     function filterNewsArticle(item) {
       const symFilter = newsFilterSymbol.value;
@@ -1184,15 +1216,21 @@
     const NEWS_COL_LIMIT = 5;
 
     function refreshNewsView() {
-      newsPositive.innerHTML = '';
-      newsNegative.innerHTML = '';
+      newsClient.innerHTML = '';
+      newsGeneral.innerHTML = '';
       const filtered = allNewsArticles.filter(filterNewsArticle);
-      if (!filtered.length) { newsPositive.innerHTML = '<div class="news-loading">No matching news.</div>'; return; }
-      let posCount = 0, negCount = 0;
+      if (!filtered.length) { newsClient.innerHTML = '<div class="news-loading">No matching news.</div>'; return; }
+      let clientCount = 0, generalCount = 0;
       for (const item of filtered) {
-        if (item.impact === 'negative') { if (negCount >= NEWS_COL_LIMIT) continue; negCount++; }
-        else { if (posCount >= NEWS_COL_LIMIT) continue; posCount++; }
-        getTargetFeed(item).appendChild(createNewsItem(item, false));
+        if (isClientSymbol(item.symbol)) {
+          if (clientCount >= NEWS_COL_LIMIT) continue;
+          clientCount++;
+          newsClient.appendChild(createNewsItem(item, false));
+        } else {
+          if (generalCount >= NEWS_COL_LIMIT) continue;
+          generalCount++;
+          newsGeneral.appendChild(createTrendingItem(item, generalCount, false));
+        }
       }
     }
 
@@ -1208,9 +1246,12 @@
       updateNewsFilterOptions();
       for (const item of articles) {
         if (!filterNewsArticle(item)) continue;
+        const isGeneral = !isClientSymbol(item.symbol);
         const feed = getTargetFeed(item);
-        if (feed.querySelectorAll('.news-item').length >= NEWS_COL_LIMIT) continue;
-        const d = createNewsItem(item, true);
+        const selector = isGeneral ? '.news-trending' : '.news-item';
+        if (feed.querySelectorAll(selector).length >= NEWS_COL_LIMIT) continue;
+        const num = feed.querySelectorAll('.news-trending').length + 1;
+        const d = isGeneral ? createTrendingItem(item, num, true) : createNewsItem(item, true);
         feed.appendChild(d);
         requestAnimationFrame(() => d.classList.remove('news-item-new'));
       }
@@ -1234,8 +1275,8 @@
     newsFilterSymbol.onchange = refreshNewsView;
     newsFilterHousehold.onchange = refreshNewsView;
     document.getElementById('refresh-news-btn').onclick = async () => {
-      newsPositive.innerHTML = '<div class="news-loading"><span class="spinner"></span> Fetching news...</div>';
-      newsNegative.innerHTML = '';
+      newsClient.innerHTML = '<div class="news-loading"><span class="spinner"></span> Fetching news...</div>';
+      newsGeneral.innerHTML = '';
       if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
       countdownEl.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:1.5px;margin:0"></span> Scanning...';
       await fetch('/api/news-refresh', { method: 'POST' });

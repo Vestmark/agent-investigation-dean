@@ -1,3 +1,6 @@
+// Disable TLS cert verification — local dev environment has SSL interception issues
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 import { Mastra } from "@mastra/core";
 import { stockMonitorAgent } from "./agents/stock-monitor.js";
 import { newsAnalystAgent } from "./agents/news-analyst.js";
@@ -18,7 +21,7 @@ import { newsLookupAgent } from "./agents/news-lookup.js";
 import { initDb } from "./db.js";
 import { updateAlertPriceMap } from "./tools/alerts.js";
 import { loadSymbols } from "./symbols.js";
-import { fetchNewsForSymbol } from "./tools/fetch-news.js";
+import { fetchNewsForSymbol, fetchGeneralNews } from "./tools/fetch-news.js";
 import { updatePriceMap } from "./tools/market-query.js";
 import {
   startServer,
@@ -429,6 +432,37 @@ ${headlineLines.join("\n")}`;
       console.error(`  News batch error (${batchSymbols.join(", ")}):`, error);
       broadcastNewsStatus(`Error analyzing ${batchSymbols.join(", ")} — skipping`);
     }
+  }
+
+  // Step 3: Fetch general market news
+  try {
+    broadcastNewsStatus(`Fetching general market news...`);
+    const generalHeadlines = await fetchGeneralNews(8);
+    if (generalHeadlines.length > 0) {
+      const headlineLines = generalHeadlines.map(
+        (a) => `[MARKET] ${a.title} | source: ${a.source} | date: ${a.pubDate} | link: ${a.link}`
+      );
+      const t2 = Date.now();
+      const genResponse = await newsAgent.generate([{
+        role: "user",
+        content: `These are TOP NEWS headlines — NOT related to any specific stock.
+IMPORTANT: Set the "symbol" field to "MARKET" for EVERY item. Do NOT use any ticker symbol.
+Return ONLY the JSON array as specified in your instructions. Keep the top 5 most important items.
+Set impact to "positive", "negative", or "neutral" based on overall market/economic sentiment.
+
+${headlineLines.join("\n")}`,
+      }]);
+      const genArticles = parseNewsResponse(genResponse.text).map(a => ({ ...a, symbol: "MARKET" }));
+      if (genArticles.length > 0) {
+        if (!newsCleared) { broadcastNewsClear(); newsCleared = true; }
+        totalFound += genArticles.length;
+        broadcastNewsAppend(genArticles, new Date().toLocaleTimeString());
+        const genTime = ((Date.now() - t2) / 1000).toFixed(1);
+        console.log(`  +${genArticles.length} general market articles in ${genTime}s`);
+      }
+    }
+  } catch (error) {
+    console.error("  General news error:", error);
   }
 
   const totalTime = ((Date.now() - t0) / 1000).toFixed(1);

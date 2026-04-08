@@ -1,5 +1,20 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import https from "node:https";
+
+const agent = new https.Agent({ rejectUnauthorized: false });
+
+async function fetchInsecure(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    https.get(url, { agent, headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
+      if (res.statusCode !== 200) { reject(new Error(`HTTP ${res.statusCode}`)); return; }
+      let data = "";
+      res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+      res.on("end", () => resolve(data));
+      res.on("error", reject);
+    }).on("error", reject);
+  });
+}
 
 const SYMBOL_NAMES: Record<string, string> = {
   AAPL: "Apple AAPL",
@@ -60,6 +75,26 @@ function parseRSSItems(
   return items;
 }
 
+// Fetch top finance/business headlines (not tied to any specific symbol)
+export async function fetchGeneralNews(maxResults = 10): Promise<{ title: string; link: string; source: string; pubDate: string }[]> {
+  const feeds = [
+    "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU0FtVnVHZ0pWVXlnQVAB?hl=en-US&gl=US&ceid=US:en", // Google News Business
+    "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en", // Google News Top Stories
+  ];
+  const allArticles: { title: string; link: string; source: string; pubDate: string }[] = [];
+
+  for (const url of feeds) {
+    try {
+      const xml = await fetchInsecure(url);
+      allArticles.push(...parseRSSItems(xml, "MARKET"));
+    } catch { /* skip */ }
+  }
+
+  // Deduplicate by title
+  const seen = new Set<string>();
+  return allArticles.filter(a => { if (seen.has(a.title)) return false; seen.add(a.title); return true; }).slice(0, maxResults);
+}
+
 // Standalone fetch function for use outside the agent tool
 export async function fetchNewsForSymbol(
   symbol: string,
@@ -70,11 +105,7 @@ export async function fetchNewsForSymbol(
   const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
 
   try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": "agent-investigation-dean/1.0" },
-    });
-    if (!res.ok) return { symbol, articles: [] };
-    const xml = await res.text();
+    const xml = await fetchInsecure(url);
     return { symbol, articles: parseRSSItems(xml, symbol).slice(0, maxResults) };
   } catch {
     return { symbol, articles: [] };
@@ -106,15 +137,7 @@ export const fetchNews = createTool({
     const query = encodeURIComponent(searchTerm);
     const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
 
-    const res = await fetch(url, {
-      headers: { "User-Agent": "agent-investigation-dean/1.0" },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Google News returned ${res.status} for ${symbol}`);
-    }
-
-    const xml = await res.text();
+    const xml = await fetchInsecure(url);
     const articles = parseRSSItems(xml, symbol).slice(0, max);
 
     return { symbol, articles };

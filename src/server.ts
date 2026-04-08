@@ -225,7 +225,7 @@ app.post("/api/price-refresh", (_req: Request, res: Response) => {
 });
 
 // --- News Interval API ---
-let newsIntervalMs = 60_000;
+let newsIntervalMs = 30_000;
 let onNewsIntervalChange: ((ms: number) => void) | null = null;
 let onNewsRefreshNow: (() => void) | null = null;
 let onFirstClient: (() => void) | null = null;

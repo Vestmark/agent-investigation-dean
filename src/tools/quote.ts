@@ -1,5 +1,20 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import https from "node:https";
+
+const agent = new https.Agent({ rejectUnauthorized: false });
+
+function fetchJSON(url: string): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    https.get(url, { agent, headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
+      if (res.statusCode !== 200) { reject(new Error(`HTTP ${res.statusCode}`)); return; }
+      let data = "";
+      res.on("data", (chunk: Buffer) => { data += chunk.toString(); });
+      res.on("end", () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
+      res.on("error", reject);
+    }).on("error", reject);
+  });
+}
 
 export const getQuote = createTool({
   id: "get-quote",
@@ -19,15 +34,7 @@ export const getQuote = createTool({
   }),
   execute: async ({ symbol }) => {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol.toUpperCase())}?interval=1m&range=1d`;
-    const response = await fetch(url, {
-      headers: { "User-Agent": "agent-investigation-dean/1.0" },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Yahoo Finance returned ${response.status} for ${symbol}`);
-    }
-
-    const data = await response.json();
+    const data = await fetchJSON(url) as Record<string, unknown>;
     const result = data?.chart?.result?.[0];
     const meta = result?.meta;
 
